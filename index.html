@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title> Infinite Tales — Choose Your Own Adventure</title>
 <script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://js.puter.com/v2/"></script>
 <style>
 /* ═══════════════════════════════════════════════════════════
    INFINITE TALES — A Dynamic Choose Your Own Adventure Engine
@@ -425,6 +426,9 @@ body {
     padding: 2.5rem;
     max-width: 500px;
     width: 90%;
+    max-height: calc(100vh - 3rem);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     position: relative;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
     animation: fadeInUp 0.4s ease;
@@ -440,20 +444,32 @@ body {
 }
 
 .modal-close {
-    position: absolute;
-    top: 1rem; right: 1rem;
-    background: none;
-    border: none;
+    position: sticky;
+    top: 0;
+    float: right;
+    z-index: 2;
+    background: var(--bg-mid);
+    padding: 0.4rem;
+    border-radius: 6px;
+    border: 1px solid transparent;
     color: var(--text-muted);
     font-size: 1.5rem;
     cursor: pointer;
     transition: var(--transition);
+    margin-bottom: 0.5rem;
 }
 
-.modal-close:hover { color: var(--accent-crimson); }
+.modal-close:hover { color: var(--accent-crimson); border-color: var(--border-bright); }
 
 .setting-group {
     margin-bottom: 1.5rem;
+}
+
+.setting-group.setting-sub {
+    margin-top: 1rem;
+    margin-bottom: 0.75rem;
+    padding-left: 0.75rem;
+    border-left: 2px solid var(--border);
 }
 
 .setting-label {
@@ -627,6 +643,45 @@ body {
 .story-text-wrapper {
     position: relative;
     margin-bottom: 2rem;
+}
+
+/* ── Story Illustrations ── */
+.story-art {
+    margin: 0 0 2rem;
+    border: 1px solid var(--border-bright);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 0 40px rgba(212, 168, 90, 0.08);
+    background: var(--bg-card);
+}
+
+.story-art img {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+}
+
+.story-art-placeholder {
+    aspect-ratio: 16 / 9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    background:
+        linear-gradient(135deg, rgba(212, 168, 90, 0.05), rgba(138, 106, 180, 0.05)),
+        var(--bg-card);
+}
+
+.story-art-placeholder .loading-spinner { margin-bottom: 0; }
+
+.story-art-note {
+    display: block;
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
+    font-style: italic;
+    color: var(--text-muted);
+    text-align: center;
 }
 
 .story-text {
@@ -1019,9 +1074,10 @@ svg.lucide { vertical-align: middle; }
             <div class="setting-option" data-value="openrouter" onclick="selectProvider('openrouter',this)">OpenRouter</div>
             <div class="setting-option" data-value="ollama" onclick="selectProvider('ollama',this)">Ollama</div>
             <div class="setting-option" data-value="openai" onclick="selectProvider('openai',this)">ChatGPT</div>
+            <div class="setting-option" data-value="minimax" onclick="selectProvider('minimax',this)">MiniMax</div>
         </div>
 
-        <input type="password" class="apikey-input" id="apikey-input" placeholder="Paste your API key (sk-...)" style="margin-top:1rem;">
+        <input type="password" class="apikey-input" id="apikey-input" data-i18n-placeholder="key_placeholder_openai" placeholder="Paste your API key (sk-...)" style="margin-top:1rem; display:none;">
         <select class="apikey-model" id="apikey-model"></select>
         <div class="apikey-actions">
             <button class="btn btn-primary" data-i18n="connect_save" onclick="saveConnection()">Save & Continue</button>
@@ -1067,6 +1123,22 @@ svg.lucide { vertical-align: middle; }
                 <div class="setting-option" data-value="horror" data-i18n="tone_horror" onclick="selectSetting('tone-select',this)">Horror</div>
                 <div class="setting-option" data-value="humorous" data-i18n="tone_humorous" onclick="selectSetting('tone-select',this)">Humorous</div>
             </div>
+        </div>
+
+        <div class="setting-group">
+            <label class="setting-label" data-i18n="set_images">Story Illustrations</label>
+            <div class="setting-select" id="images-select">
+                <div class="setting-option selected" data-value="off" data-i18n="images_off" onclick="selectSetting('images-select',this)">Off</div>
+                <div class="setting-option" data-value="on" data-i18n="images_on" onclick="selectSetting('images-select',this)">On</div>
+            </div>
+            <div class="setting-group setting-sub" id="imgprovider-group" style="display:none">
+                <label class="setting-label" data-i18n="set_imgprovider">Illustrations Provider</label>
+                <div class="setting-select" id="imgprovider-select">
+                    <div class="setting-option selected" data-value="puter" data-i18n="imgprovider_puter" onclick="selectSetting('imgprovider-select',this)">Puter (Free)</div>
+                    <div class="setting-option" data-value="minimax" data-i18n="imgprovider_minimax" onclick="selectSetting('imgprovider-select',this)">MiniMax (API key)</div>
+                </div>
+            </div>
+            <p class="modal-hint" data-i18n="images_hint">Generate an illustration for every scene. With Puter, it's free and unlimited — your players cover their own usage with a free Puter account. With MiniMax, use your MiniMax API key.</p>
         </div>
 
         <div class="setting-group">
@@ -1237,6 +1309,8 @@ const I18N = {
         hint_openai: `Get your API key at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a><br>Your key never leaves your browser.`,
         key_placeholder_openrouter: `Paste your OpenRouter API key (sk-or-...)`,
         hint_openrouter: `Get a free API key at <a href="https://openrouter.ai/openrouter/free" target="_blank">openrouter.ai/openrouter/free</a><br>Your key never leaves your browser.`,
+        key_placeholder_minimax: `Paste your MiniMax API key`,
+        hint_minimax: `Get your API key at <a href="https://platform.minimax.io/user-center/basic-information/interface-key" target="_blank">platform.minimax.io</a><br>Your key never leaves your browser.`,
         hint_ollama: `Requires the <a href="https://ollama.com/download" target="_blank">Ollama app</a> installed and running locally.<br>Cloud models need you to be signed in to your Ollama account.`,
         models_enter_key: `Enter your API key to load available models`,
         models_loading: `Loading available models`,
@@ -1285,12 +1359,21 @@ const I18N = {
         style_concise: `Concise`,
         style_literary: `Literary`,
         style_cinematic: `Cinematic`,
+        set_images: `Story Illustrations`,
+        images_off: `Off`,
+        images_on: `On`,
+        set_imgprovider: `Illustrations Provider`,
+        imgprovider_puter: `Puter (Free)`,
+        imgprovider_minimax: `MiniMax (API key)`,
+        images_hint: `Generate an illustration for every scene. With Puter, it's free and unlimited — your players cover their own usage with a free Puter account. With MiniMax, use your MiniMax API key.`,
+        images_unavailable: `Illustration unavailable — please try again later.`,
         btn_save_settings: `Save Settings`,
         toast_connected: `AI connected! Your adventures await.`,
         toast_key_required: `Please enter your API key.`,
         toast_topic_required: `Please describe your adventure topic.`,
         err_parse: `Could not parse story response.`,
         err_invalid: `Invalid story format.`,
+        err_empty: `The AI returned an empty response. Please try again.`,
     },
     es: {
         brand_subtitle: `Elige tu propia aventura`,
@@ -1314,6 +1397,8 @@ const I18N = {
         hint_openai: `Obtén tu clave API en <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a><br>Tu clave nunca sale de tu navegador.`,
         key_placeholder_openrouter: `Pega tu clave API de OpenRouter (sk-or-...)`,
         hint_openrouter: `Obtén una clave API gratuita en <a href="https://openrouter.ai/openrouter/free" target="_blank">openrouter.ai/openrouter/free</a><br>Tu clave nunca sale de tu navegador.`,
+        key_placeholder_minimax: `Pega tu clave API de MiniMax`,
+        hint_minimax: `Obtén tu clave API en <a href="https://platform.minimax.io/user-center/basic-information/interface-key" target="_blank">platform.minimax.io</a><br>Tu clave nunca sale de tu navegador.`,
         hint_ollama: `Requiere la <a href="https://ollama.com/download" target="_blank">app de Ollama</a> instalada y en ejecución localmente.<br>Los modelos en la nube requieren que inicies sesión en tu cuenta de Ollama.`,
         models_enter_key: `Introduce tu clave API para cargar los modelos disponibles`,
         models_loading: `Cargando modelos disponibles`,
@@ -1362,12 +1447,21 @@ const I18N = {
         style_concise: `Conciso`,
         style_literary: `Literario`,
         style_cinematic: `Cinematográfico`,
+        set_images: `Ilustraciones de la historia`,
+        images_off: `Desactivadas`,
+        images_on: `Activadas`,
+        set_imgprovider: `Proveedor de ilustraciones`,
+        imgprovider_puter: `Puter (gratis)`,
+        imgprovider_minimax: `MiniMax (clave API)`,
+        images_hint: `Genera una ilustración para cada escena. Con Puter, es gratis e ilimitado: tus jugadores cubren su propio uso con una cuenta gratuita de Puter. Con MiniMax, usa tu clave API de MiniMax.`,
+        images_unavailable: `Ilustración no disponible — inténtalo de nuevo más tarde.`,
         btn_save_settings: `Guardar ajustes`,
         toast_connected: `¡IA conectada! Tus aventuras te esperan.`,
         toast_key_required: `Introduce tu clave API.`,
         toast_topic_required: `Describe el tema de tu aventura.`,
         err_parse: `No se pudo analizar la respuesta de la historia.`,
         err_invalid: `Formato de historia no válido.`,
+        err_empty: `La IA devolvió una respuesta vacía. Inténtalo de nuevo.`,
     },
     fr: {
         brand_subtitle: `Choisissez votre propre aventure`,
@@ -1391,6 +1485,8 @@ const I18N = {
         hint_openai: `Obtenez votre clé API sur <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a><br>Votre clé ne quitte jamais votre navigateur.`,
         key_placeholder_openrouter: `Collez votre clé API OpenRouter (sk-or-...)`,
         hint_openrouter: `Obtenez une clé API gratuite sur <a href="https://openrouter.ai/openrouter/free" target="_blank">openrouter.ai/openrouter/free</a><br>Votre clé ne quitte jamais votre navigateur.`,
+        key_placeholder_minimax: `Collez votre clé API MiniMax`,
+        hint_minimax: `Obtenez votre clé API sur <a href="https://platform.minimax.io/user-center/basic-information/interface-key" target="_blank">platform.minimax.io</a><br>Votre clé ne quitte jamais votre navigateur.`,
         hint_ollama: `Nécessite l'<a href="https://ollama.com/download" target="_blank">application Ollama</a> installée et exécutée localement.<br>Les modèles cloud nécessitent d'être connecté à votre compte Ollama.`,
         models_enter_key: `Saisissez votre clé API pour charger les modèles disponibles`,
         models_loading: `Chargement des modèles disponibles`,
@@ -1439,12 +1535,21 @@ const I18N = {
         style_concise: `Concis`,
         style_literary: `Littéraire`,
         style_cinematic: `Cinématographique`,
+        set_images: `Illustrations de l'histoire`,
+        images_off: `Désactivées`,
+        images_on: `Activées`,
+        set_imgprovider: `Fournisseur d'illustrations`,
+        imgprovider_puter: `Puter (gratuit)`,
+        imgprovider_minimax: `MiniMax (clé API)`,
+        images_hint: `Générez une illustration pour chaque scène. Avec Puter, c'est gratuit et illimité — vos joueurs couvrent leur propre usage avec un compte Puter gratuit. Avec MiniMax, utilisez votre clé API MiniMax.`,
+        images_unavailable: `Illustration indisponible — veuillez réessayer plus tard.`,
         btn_save_settings: `Enregistrer les paramètres`,
         toast_connected: `IA connectée ! Vos aventures vous attendent.`,
         toast_key_required: `Veuillez saisir votre clé API.`,
         toast_topic_required: `Veuillez décrire le thème de votre aventure.`,
         err_parse: `Impossible d'analyser la réponse de l'histoire.`,
         err_invalid: `Format d'histoire invalide.`,
+        err_empty: `L'IA a renvoyé une réponse vide. Veuillez réessayer.`,
     },
     pt: {
         brand_subtitle: `Escolha sua própria aventura`,
@@ -1468,6 +1573,8 @@ const I18N = {
         hint_openai: `Obtenha sua chave de API em <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a><br>Sua chave nunca sai do seu navegador.`,
         key_placeholder_openrouter: `Cole sua chave de API do OpenRouter (sk-or-...)`,
         hint_openrouter: `Obtenha uma chave de API gratuita em <a href="https://openrouter.ai/openrouter/free" target="_blank">openrouter.ai/openrouter/free</a><br>Sua chave nunca sai do seu navegador.`,
+        key_placeholder_minimax: `Cole sua chave de API do MiniMax`,
+        hint_minimax: `Obtenha sua chave de API em <a href="https://platform.minimax.io/user-center/basic-information/interface-key" target="_blank">platform.minimax.io</a><br>Sua chave nunca sai do seu navegador.`,
         hint_ollama: `Exige o <a href="https://ollama.com/download" target="_blank">aplicativo Ollama</a> instalado e em execução localmente.<br>Os modelos na nuvem exigem que você esteja conectado à sua conta Ollama.`,
         models_enter_key: `Digite sua chave de API para carregar os modelos disponíveis`,
         models_loading: `Carregando modelos disponíveis`,
@@ -1516,12 +1623,21 @@ const I18N = {
         style_concise: `Conciso`,
         style_literary: `Literário`,
         style_cinematic: `Cinematográfico`,
+        set_images: `Ilustrações da história`,
+        images_off: `Desativadas`,
+        images_on: `Ativadas`,
+        set_imgprovider: `Provedor de ilustrações`,
+        imgprovider_puter: `Puter (grátis)`,
+        imgprovider_minimax: `MiniMax (chave de API)`,
+        images_hint: `Gere uma ilustração para cada cena. Com o Puter, é grátis e ilimitado — seus jogadores cobrem o próprio uso com uma conta Puter gratuita. Com o MiniMax, use sua chave de API do MiniMax.`,
+        images_unavailable: `Ilustração indisponível — tente novamente mais tarde.`,
         btn_save_settings: `Salvar configurações`,
         toast_connected: `IA conectada! Suas aventuras esperam por você.`,
         toast_key_required: `Digite sua chave de API.`,
         toast_topic_required: `Descreva o tema da sua aventura.`,
         err_parse: `Não foi possível analisar a resposta da história.`,
         err_invalid: `Formato de história inválido.`,
+        err_empty: `A IA retornou uma resposta vazia. Tente novamente.`,
     },
     de: {
         brand_subtitle: `Wähle dein eigenes Abenteuer`,
@@ -1545,6 +1661,8 @@ const I18N = {
         hint_openai: `Erhalte deinen API-Schlüssel unter <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a><br>Dein Schlüssel verlässt deinen Browser nie.`,
         key_placeholder_openrouter: `Füge deinen OpenRouter-API-Schlüssel ein (sk-or-...)`,
         hint_openrouter: `Erhalte einen kostenlosen API-Schlüssel unter <a href="https://openrouter.ai/openrouter/free" target="_blank">openrouter.ai/openrouter/free</a><br>Dein Schlüssel verlässt nie deinen Browser.`,
+        key_placeholder_minimax: `Füge deinen MiniMax-API-Schlüssel ein`,
+        hint_minimax: `Erhalte deinen API-Schlüssel unter <a href="https://platform.minimax.io/user-center/basic-information/interface-key" target="_blank">platform.minimax.io</a><br>Dein Schlüssel verlässt deinen Browser nie.`,
         hint_ollama: `Benötigt die <a href="https://ollama.com/download" target="_blank">Ollama-App</a> installiert und lokal ausgeführt.<br>Cloud-Modelle erfordern, dass du in deinem Ollama-Konto angemeldet bist.`,
         models_enter_key: `Gib deinen API-Schlüssel ein, um verfügbare Modelle zu laden`,
         models_loading: `Verfügbare Modelle werden geladen`,
@@ -1593,12 +1711,21 @@ const I18N = {
         style_concise: `Kompakt`,
         style_literary: `Literarisch`,
         style_cinematic: `Kinematografisch`,
+        set_images: `Geschichtsillustrationen`,
+        images_off: `Aus`,
+        images_on: `An`,
+        set_imgprovider: `Illustrations-Anbieter`,
+        imgprovider_puter: `Puter (kostenlos)`,
+        imgprovider_minimax: `MiniMax (API-Schlüssel)`,
+        images_hint: `Erstelle für jede Szene eine Illustration. Mit Puter ist es kostenlos und unbegrenzt — deine Spieler übernehmen ihren eigenen Verbrauch mit einem kostenlosen Puter-Konto. Mit MiniMax verwende deinen MiniMax-API-Schlüssel.`,
+        images_unavailable: `Illustration nicht verfügbar — bitte später erneut versuchen.`,
         btn_save_settings: `Einstellungen speichern`,
         toast_connected: `KI verbunden! Deine Abenteuer warten.`,
         toast_key_required: `Bitte gib deinen API-Schlüssel ein.`,
         toast_topic_required: `Bitte beschreibe das Thema deines Abenteuers.`,
         err_parse: `Die Antwort der Geschichte konnte nicht analysiert werden.`,
         err_invalid: `Ungültiges Geschichtsformat.`,
+        err_empty: `Die KI hat eine leere Antwort geliefert. Bitte erneut versuchen.`,
     },
     it: {
         brand_subtitle: `Scegli la tua avventura`,
@@ -1622,6 +1749,8 @@ const I18N = {
         hint_openai: `Ottieni la tua chiave API su <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a><br>La tua chiave non lascia mai il tuo browser.`,
         key_placeholder_openrouter: `Incolla la tua chiave API OpenRouter (sk-or-...)`,
         hint_openrouter: `Ottieni una chiave API gratuita su <a href="https://openrouter.ai/openrouter/free" target="_blank">openrouter.ai/openrouter/free</a><br>La tua chiave non lascia mai il tuo browser.`,
+        key_placeholder_minimax: `Incolla la tua chiave API MiniMax`,
+        hint_minimax: `Ottieni la tua chiave API su <a href="https://platform.minimax.io/user-center/basic-information/interface-key" target="_blank">platform.minimax.io</a><br>La tua chiave non lascia mai il tuo browser.`,
         hint_ollama: `Richiede l'<a href="https://ollama.com/download" target="_blank">app Ollama</a> installata ed eseguita localmente.<br>I modelli cloud richiedono l'accesso al tuo account Ollama.`,
         models_enter_key: `Inserisci la tua chiave API per caricare i modelli disponibili`,
         models_loading: `Caricamento modelli disponibili`,
@@ -1670,12 +1799,21 @@ const I18N = {
         style_concise: `Conciso`,
         style_literary: `Letterario`,
         style_cinematic: `Cinematografico`,
+        set_images: `Illustrazioni della storia`,
+        images_off: `Disattivate`,
+        images_on: `Attivate`,
+        set_imgprovider: `Fornitore di illustrazioni`,
+        imgprovider_puter: `Puter (gratuito)`,
+        imgprovider_minimax: `MiniMax (chiave API)`,
+        images_hint: `Genera un'illustrazione per ogni scena. Con Puter è gratuito e illimitato — i tuoi giocatori coprono il proprio utilizzo con un account Puter gratuito. Con MiniMax, usa la tua chiave API MiniMax.`,
+        images_unavailable: `Illustrazione non disponibile — riprova più tardi.`,
         btn_save_settings: `Salva impostazioni`,
         toast_connected: `IA collegata! Le tue avventure ti aspettano.`,
         toast_key_required: `Inserisci la tua chiave API.`,
         toast_topic_required: `Descrivi il tema della tua avventura.`,
         err_parse: `Impossibile analizzare la risposta della storia.`,
-        err_invalid: `Formato storia non valido.`,
+        err_invalid: `Formato di storia non valido.`,
+        err_empty: `L'IA ha restituito una risposta vuota. Riprova.`,
     },
 };
 
@@ -1739,6 +1877,13 @@ const MODELS = {
         { value: 'qwen/qwen-2.5-7b-instruct:free', label: 'Qwen 2.5 7B Instruct (Free)' },
         { value: 'google/gemini-2.0-flash-exp:free', label: 'Gemini 2.0 Flash (Free)' },
     ],
+    minimax: [
+        { value: 'MiniMax-M3', label: 'MiniMax-M3 (Agentic, 1M context)' },
+        { value: 'MiniMax-M2.7', label: 'MiniMax-M2.7' },
+        { value: 'MiniMax-M2.7-highspeed', label: 'MiniMax-M2.7 High-Speed' },
+        { value: 'MiniMax-M2.5', label: 'MiniMax-M2.5' },
+        { value: 'MiniMax-M2.5-highspeed', label: 'MiniMax-M2.5 High-Speed' },
+    ],
 };
 
 // ── Per-provider storage ──
@@ -1749,7 +1894,7 @@ function storedModel(provider) {
     return localStorage.getItem('cyoa_model_' + provider) || '';
 }
 function defaultModel(provider) {
-    const defaults = { openai: 'gpt-4o-mini', openrouter: 'meta-llama/llama-3.1-8b-instruct:free' };
+    const defaults = { openai: 'gpt-4o-mini', openrouter: 'meta-llama/llama-3.1-8b-instruct:free', minimax: 'MiniMax-M3' };
     return defaults[provider] || 'glm-5.2:cloud';
 }
 
@@ -1768,11 +1913,14 @@ let state = {
         language: normalizeLang(localStorage.getItem('cyoa_language')) || browserLanguage(),
         langlevel: localStorage.getItem('cyoa_langlevel') || 'intermediate',
         style: 'immersive',
+        images: localStorage.getItem('cyoa_images') === 'off' ? 'off' : 'on',
+        illProvider: localStorage.getItem('cyoa_imgprovider') || (localStorage.getItem('cyoa_api_key_minimax') ? 'minimax' : 'puter'),
     },
     provider: localStorage.getItem('cyoa_provider') || 'ollama',
     apiKey: storedApiKey(localStorage.getItem('cyoa_provider') || 'ollama'),
     model: storedModel(localStorage.getItem('cyoa_provider') || 'ollama') || defaultModel(localStorage.getItem('cyoa_provider') || 'ollama'),
     storySummary: '', // Running summary for context management
+    artSeed: Math.floor(Math.random() * 1e9), // Fixed per story; keeps MiniMax art consistent
 };
 
 // ── DOM Helpers ──
@@ -1801,7 +1949,7 @@ function goToApiKeyScreen() {
 
 // ── Connection ──
 function providerNeedsKey(p) {
-    return p === 'openai' || p === 'openrouter';
+    return p === 'openai' || p === 'openrouter' || p === 'minimax';
 }
 
 function providerConfig(p) {
@@ -1832,6 +1980,13 @@ function providerConfig(p) {
                 const pr = m.pricing || {};
                 return Number(pr.prompt) === 0 && Number(pr.completion) === 0;
             },
+        },
+        minimax: {
+            needsKey: true,
+            chatUrl: 'https://api.minimax.io/v1/chat/completions',
+            models: MODELS.minimax,
+            hintKey: 'hint_minimax',
+            keyPlaceholder: 'key_placeholder_minimax',
         },
     }[p] || { needsKey: false, chatUrl: 'http://localhost:11434/v1/chat/completions', models: MODELS.ollama, hintKey: 'hint_ollama' };
 }
@@ -1933,7 +2088,10 @@ function saveConnection() {
 }
 
 // ── Settings ──
-function openSettings() { $('settings-modal').classList.add('active'); }
+function openSettings() {
+    $('imgprovider-group').style.display = state.settings.images === 'on' ? '' : 'none';
+    $('settings-modal').classList.add('active');
+}
 function closeSettings() { $('settings-modal').classList.remove('active'); }
 
 function selectSetting(selectId, el) {
@@ -1943,6 +2101,11 @@ function selectSetting(selectId, el) {
     state.settings[key] = el.dataset.value;
     localStorage.setItem('cyoa_' + key, el.dataset.value);
     if (key === 'language') applyTranslations();
+    if (key === 'images') {
+        $('imgprovider-group').style.display = el.dataset.value === 'on' ? '' : 'none';
+        if (el.dataset.value === 'on' && effectiveImageProvider() === 'puter') ensurePuterAuth();
+    }
+    if (key === 'imgprovider' && state.settings.images === 'on' && effectiveImageProvider() === 'puter') ensurePuterAuth();
 }
 
 // ── Topics ──
@@ -1962,12 +2125,15 @@ function renderTopics() {
 function startStory(topicId) {
     const topic = TOPICS.find(t => t.id === topicId);
     if (!topic) return;
+    ensurePuterAuth();   // must run inside the click gesture so the popup isn't blocked
     state.topic = topic.name[state.settings.language] || topic.name.en;
     state.topicPrompt = topic.prompt;
     state.chapter = 0;
     state.turn = 0;
     state.history = [];
     state.storySummary = '';
+    state.artSeed = Math.floor(Math.random() * 1e9); // fixed per story for MiniMax style consistency
+    cancelPendingArt();
     $('story-topic-badge').innerHTML = `<i data-lucide="${topic.icon}"></i> ${state.topic}`;
     showScreen('story-screen');
     initIcons();
@@ -1978,12 +2144,14 @@ function startCustomStory() {
     const input = $('custom-topic-input');
     const val = input.value.trim();
     if (!val) { showToast(t('toast_topic_required'), 'error'); return; }
+    ensurePuterAuth();   // must run inside the click gesture so the popup isn't blocked
     state.topic = t('custom_tale');
     state.topicPrompt = `A unique adventure: ${val}. Create an engaging, branching story around this concept.`;
     state.chapter = 0;
     state.turn = 0;
     state.history = [];
     state.storySummary = '';
+    cancelPendingArt();
     $('story-topic-badge').innerHTML = `<i data-lucide="sparkle"></i> ${state.topic}`;
     showScreen('story-screen');
     initIcons();
@@ -2028,7 +2196,7 @@ function buildSystemPrompt() {
 
 GENRE/PREMISE: ${state.topicPrompt}
 
-LANGUAGE: CRITICAL — you MUST write ALL content (narrative, choices, hints, and summary) in ${languageName}. Never switch to English or any other language, regardless of what the player writes.
+LANGUAGE: CRITICAL — you MUST write ALL content (narrative, choices, hints, and summary) in ${languageName}. Every single word must be in ${languageName}. Never mix in words or phrases from English or any other language — not even single words like "overhead" or "lately". Do not use characters from other writing systems (Chinese, Cyrillic, Greek, Arabic, etc.). Proper nouns (character names, place names) may stay as-is, but everything else must be in ${languageName}.
 
 LANGUAGE LEVEL: ${langlevelMap[langlevel] || langlevelMap.intermediate} Apply this reading level to ALL text you write: narrative, choices, hints, and summary.
 
@@ -2037,6 +2205,8 @@ TONE: ${toneMap[tone]}
 DIFFICULTY: ${difficultyMap[difficulty]}
 
 WRITING STYLE: ${styleMap[style]}
+
+VISUAL STYLE (for continuity): Every scene should be described as if rendered in this consistent visual style — ${IMAGE_STYLE_DESC}. Use this style as the artistic reference for descriptions, keeping the imagery coherent with previous scenes.
 
 RULES:
 1. Write in SECOND PERSON ("You open the door...", "Your heart pounds..."). The reader IS the protagonist.
@@ -2087,15 +2257,254 @@ function buildUserPrompt(chosenOption) {
     }
 
     const languageName = (LANGUAGES[state.settings.language] && LANGUAGES[state.settings.language].name) || 'English';
-    parts.push(`\nREMINDER: Write this entire scene — narrative, choices, hints, and summary — in ${languageName}. Do not switch languages.`);
+    parts.push(`\nREMINDER: Write this entire scene — narrative, choices, hints, and summary — entirely in ${languageName}. Every single word must be in ${languageName} (proper nouns aside). Do not mix in words from English or any other language.`);
 
     return parts.join('\n');
 }
 
+// ── Scene Illustrations (free Puter.js / Google Imagen API) ──
+const IMAGEN_MODEL = 'google/imagen-4.0';
+
+// Visual style baked into the story context and re-emphasized on every image
+// prompt so later scenes stay consistent with the first illustration.
+const IMAGE_STYLE_DESC = 'high-contrast ink illustration, woodcut and etching influences, dense cross-hatching, expressive contour lines, extremely detailed environmental rendering, black ink on white paper, dramatic tonal separation, vintage illustrated fantasy book aesthetic, NO TEXT.';
+
+// Tracks an in-flight Puter sign-in so image generation can wait for it.
+let puterAuthPromise = null;
+
+// Puter.js runs on the User-Pays model: each player signs in with a free Puter
+// account that covers their own image usage. The sign-in popup MUST be opened
+// from a user gesture (a click) or the browser silently blocks it — so we call
+// this from the story-start handlers, never from async image generation.
+function ensurePuterAuth() {
+    if (state.settings.images !== 'on') return;
+    if (effectiveImageProvider() !== 'puter') return;
+    if (!window.puter || !window.puter.auth) return;
+    if (puterAuthPromise) return puterAuthPromise;
+    try {
+        if (window.puter.auth.isSignedIn && window.puter.auth.isSignedIn()) return;
+    } catch (e) {}
+    try {
+        // attempt_temp_user_creation → one-tap onboarding, no signup form.
+        puterAuthPromise = window.puter.auth.signIn({ attempt_temp_user_creation: true });
+        puterAuthPromise.catch(() => { puterAuthPromise = null; });
+        puterAuthPromise.then(() => { puterAuthPromise = null; });
+        return puterAuthPromise;
+    } catch (e) {}
+}
+
+function buildImagePrompt(node) {
+    const languageName = (LANGUAGES[state.settings.language] && LANGUAGES[state.settings.language].name) || 'English';
+    const tone = state.settings.tone;
+    const rawScene = (node.story || '').replace(/\s+/g, ' ').trim();
+    const rawContext = (state.storySummary || '').replace(/\s+/g, ' ').trim();
+
+    const prefix = `Illustrate the current scene of a ${state.topic} choose-your-own-adventure story.
+
+Artistic style (apply exactly, keep consistent across all illustrations): ${IMAGE_STYLE_DESC}
+
+Tone: ${tone}.`;
+    const suffix = `
+
+Compose the image as a wide 16:9 landscape. Do not include any text or captions in the image.`;
+
+    // MiniMax rejects prompts over 1500 chars (status 2013). The fixed prefix
+    // and suffix consume most of the budget, so carve the scene and prior
+    // context to fit — the scene always gets priority.
+    const MAX_PROMPT = 1450;
+    const remaining = MAX_PROMPT - prefix.length - suffix.length;
+
+    let contextBlock = '\nThis is the opening illustration — establish the visual style above.';
+    let scene = rawScene;
+    if (rawContext) {
+        const ctxWrapper = `\nStory so far: ""\n\nMaintain the exact same visual style as the previous illustration.`;
+        const ctxBudget = Math.min(Math.floor(remaining * 0.35), rawContext.length);
+        scene = rawScene.slice(0, Math.max(0, remaining - ctxWrapper.length - ctxBudget));
+        const ctx = rawContext.slice(0, ctxBudget);
+        contextBlock = `\nStory so far: "${ctx}"\n\nMaintain the exact same visual style as the previous illustration.`;
+    } else {
+        scene = rawScene.slice(0, Math.max(0, remaining - contextBlock.length));
+    }
+
+    return `${prefix}${contextBlock}\n\nScene: "${scene}"${suffix}`;
+}
+
+// ── Serialized, cancellable image pipeline ──
+// Chains requests so no two image generations overlap, and bumps the epoch on
+// every story/restart so stale art never renders. No key, no quota, no retries:
+// Puter.js handles the user-pays billing and keeps it effectively unlimited.
+let artQueue = Promise.resolve();
+let artEpoch = 0;   // bumped on every story/restart to cancel stale art
+
+function cancelPendingArt() {
+    artEpoch++;
+}
+
+// MiniMax image API (Google Imagen alternative for the illustration pipeline).
+const MINIMAX_IMG_URL = 'https://api.minimax.io/v1/image_generation';
+const MINIMAX_IMG_MODEL = 'image-01';
+
+function minimaxImageKey() {
+    // Prefer the MiniMax key if it's the active text provider, else the saved MiniMax key.
+    return state.provider === 'minimax' ? state.apiKey : storedApiKey('minimax');
+}
+
+function minimaxConfigured() { return !!minimaxImageKey(); }
+
+function effectiveImageProvider() {
+    const chosen = localStorage.getItem('cyoa_imgprovider');
+    if (chosen) return minimaxConfigured() ? chosen : 'puter'; // explicit choice, w/ fallback
+    return minimaxConfigured() ? 'minimax' : 'puter';           // auto default
+}
+
+async function generateMiniMaxImage(prompt) {
+    const key = minimaxImageKey();
+    if (!key) return null;
+    const res = await fetch(MINIMAX_IMG_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify({
+            model: MINIMAX_IMG_MODEL,
+            prompt,
+            aspect_ratio: '16:9',
+            response_format: 'base64',
+            seed: state.artSeed,
+        }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data.base_resp && data.base_resp.status_code !== 0) {
+        throw new Error(data.base_resp.status_msg || ('MiniMax ' + data.base_resp.status_code));
+    }
+    const b64 = data?.data?.image_base64?.[0];
+    if (!b64) throw new Error('no image');
+    return 'data:image/jpeg;base64,' + b64;
+}
+
+async function generateSceneImage(node) {
+    if (state.settings.images !== 'on') return null;
+    const epoch = artEpoch;
+
+    const run = async () => {
+        if (epoch !== artEpoch) return null;
+        const prompt = buildImagePrompt(node);
+        try {
+            // Race with a timeout so a hung call never leaves the spinner forever.
+            const img = await Promise.race([
+                (async () => {
+                    if (effectiveImageProvider() === 'minimax') {
+                        return generateMiniMaxImage(prompt);
+                    }
+                    if (!window.puter || !window.puter.ai || !window.puter.ai.txt2img) return null;
+                    // If a sign-in popup is still open, wait for it so the session is
+                    // ready before requesting an image.
+                    if (puterAuthPromise) {
+                        await Promise.race([
+                            puterAuthPromise,
+                            new Promise((_, reject) => setTimeout(() => reject(new Error('auth timeout')), 30000)),
+                        ]);
+                        if (epoch !== artEpoch) return null;
+                    }
+                    const img = await puter.ai.txt2img(prompt, { model: IMAGEN_MODEL });
+                    return img && img.src ? img.src : null; // data URL → cacheable
+                })(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 60000)),
+            ]);
+            if (epoch !== artEpoch) return null;
+            return img || null;
+        } catch (err) {
+            if (epoch !== artEpoch) return null;
+            console.warn('Image generation failed:', err);
+        }
+        return null;
+    };
+
+    // Chain every request so no two image generations overlap.
+    const result = artQueue.then(run);
+    artQueue = result.catch(() => {});
+    return result;
+}
+
+function markArtBlocked(artSlot) {
+    if (!artSlot || !artSlot.isConnected) return;
+    artSlot.classList.remove('story-art-placeholder');
+    artSlot.innerHTML = `<span class="story-art-note">${t('images_unavailable')}</span>`;
+}
+
+function maybeRenderArt(node, artSlot) {
+    if (!artSlot || !state.settings.images) return;
+
+    if (node.image) {
+        artSlot.innerHTML = `<img src="${node.image}" alt="Scene illustration">`;
+        return;
+    }
+
+    const epoch = artEpoch;
+    generateSceneImage(node).then(url => {
+        // The typewriter completion rebuilds story-content.innerHTML, which
+        // detaches the original art node — re-query it so the image still
+        // renders even if generation outlived the typewriter.
+        const liveSlot = artSlot && artSlot.id ? document.getElementById(artSlot.id) : artSlot;
+        if (epoch !== artEpoch || !liveSlot || !liveSlot.isConnected) return;
+        if (!url) {
+            markArtBlocked(liveSlot);
+            return;
+        }
+        node.image = url;
+        liveSlot.innerHTML = `<img src="${node.image}" alt="Scene illustration">`;
+    });
+}
+
+// ── Language Consistency Guard ──
+// Some providers (especially MiniMax M3) occasionally drift into mixed-language
+// output despite strict prompting. Detect foreign writing systems (Chinese,
+// Cyrillic, Greek, Arabic, etc.) that never appear in the six supported story
+// languages, then run ONE corrective rewrite pass to purge them.
+function hasForeignScript(text) {
+    if (!text) return false;
+    // Ranges: CJK, Kana, Hangul, Cyrillic, Greek, Arabic, Hebrew, Thai,
+    // Devanagari, Armenian, Georgian — none belong to en/es/fr/pt/de/it.
+    return /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF\u0400-\u04FF\u0370-\u03FF\u0590-\u05FF\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u0530-\u058F\u10A0-\u10FF]/.test(text);
+}
+
+async function correctStoryLanguage(storyNode) {
+    const languageName = (LANGUAGES[state.settings.language] && LANGUAGES[state.settings.language].name) || 'English';
+    const cfg = providerConfig(state.provider);
+    const headers = { 'Content-Type': 'application/json' };
+    if (cfg.needsKey) headers['Authorization'] = `Bearer ${state.apiKey}`;
+    if (state.provider === 'openrouter') {
+        headers['HTTP-Referer'] = window.location.href || 'http://localhost';
+        headers['X-Title'] = 'Infinite Tales';
+    }
+    const response = await fetch(cfg.chatUrl, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({
+            model: state.model,
+            messages: [
+                { role: 'system', content: `You are a translation editor. Fix the language of a game scene. Every word must be in ${languageName} (proper nouns aside). Do not mix in words from any other language or writing system. Reply with valid JSON matching the input structure exactly.` },
+                { role: 'user', content: `Rewrite ALL text of this scene (story, choices text/hints, summary) entirely in ${languageName}. Keep the same meaning, names, and JSON structure. Output only the JSON:\n\n${JSON.stringify(storyNode)}` },
+            ],
+            temperature: 0.2,
+            max_tokens: 3000,
+            stream: false,
+            response_format: { type: 'json_object' },
+        }),
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (typeof content !== 'string' || !content.trim()) return null;
+    try {
+        const fixed = JSON.parse(content);
+        if (fixed && typeof fixed.story === 'string') return fixed;
+    } catch (e) {}
+    return null;
+}
+
 async function generateStoryNode(chosenOption) {
     if (state.isLoading) return;
-    state.isLoading = true;
-    state.turn++;
+    state.isLoading = true;    state.turn++;
     state.chapter = Math.floor((state.turn - 1) / 4) + 1; // New chapter every 4 turns
 
     // Update badges
@@ -2144,7 +2553,13 @@ async function generateStoryNode(chosenOption) {
         }
 
         const data = await response.json();
-        const content = data.choices[0].message.content;
+        if (data.error) {
+            throw new Error(data.error.message || data.error.code || 'API error');
+        }
+        const content = data.choices?.[0]?.message?.content;
+        if (typeof content !== 'string' || !content.trim()) {
+            throw new Error(t('err_empty'));
+        }
         let storyNode;
 
         try {
@@ -2164,6 +2579,20 @@ async function generateStoryNode(chosenOption) {
         if (!storyNode.choices) storyNode.choices = [];
         if (!storyNode.is_ending) storyNode.is_ending = false;
         if (!storyNode.ending_type) storyNode.ending_type = null;
+
+        // Purge mixed-language drift (Chinese/Cyrillic/etc. leaking into the
+        // story). One corrective rewrite pass, then re-validate the result.
+        if (hasForeignScript(storyNode.story) ||
+            (storyNode.choices || []).some(c => hasForeignScript((c && c.text) || ''))) {
+            const fixed = await correctStoryLanguage(storyNode);
+            if (fixed) {
+                storyNode = fixed;
+                if (!storyNode.story) storyNode.story = '...';
+                if (!storyNode.choices) storyNode.choices = [];
+                if (!storyNode.is_ending) storyNode.is_ending = false;
+                if (!storyNode.ending_type) storyNode.ending_type = null;
+            }
+        }
 
         // Force an ending once the maximum number of turns is reached
         if (state.turn >= MAX_TURNS) {
@@ -2229,11 +2658,18 @@ function renderStory(node) {
     let pathHTML = `<div class="story-path"><span class="path-step path-current">${t('badge_turn')} ${state.turn}</span></div>`;
 
     // Build story text with typewriter effect
+    const artEnabled = state.settings.images === 'on';
+    const artHTML = artEnabled
+        ? `<div class="story-art story-art-placeholder" id="scene-art"><div class="loading-spinner"></div></div>`
+        : '';
+
     const storyHTML = `
         ${pathHTML}
+        ${artHTML}
         <div class="story-text-wrapper">
             <div class="story-text" id="story-text-el"></div>
         </div>
+        <div id="choices-section"></div>
     `;
 
     if (node.is_ending) {
@@ -2243,11 +2679,17 @@ function renderStory(node) {
 
     content.innerHTML = storyHTML;
 
+    if (artEnabled) {
+        maybeRenderArt(node, $('scene-art'));
+    }
+
     // Typewriter effect
     typewriterEffect($('story-text-el'), node.story, () => {
-        // After typing, show choices
+        // After typing, show choices in the pre-existing container so the
+        // art element (id="scene-art") is never detached by an innerHTML
+        // rebuild of the whole story block.
         const choicesHTML = `
-            <div class="choices-section" id="choices-section">
+            <div class="choices-section">
                 ${node.choices.map((choice, idx) => `
                     <button class="choice-btn" style="animation-delay:${idx * 0.1}s" onclick="makeChoice(${idx})">
                         ${escapeHtml(choice.text)}${choice.hint ? ` <span style="color:var(--text-muted);font-size:0.85rem;font-style:italic;">— ${escapeHtml(choice.hint)}</span>` : ''}
@@ -2255,7 +2697,7 @@ function renderStory(node) {
                 `).join('')}
             </div>
         `;
-        content.innerHTML += choicesHTML;
+        $('choices-section').innerHTML = choicesHTML;
 
         // Show back button if we have history
         if (state.history.length > 0) {
@@ -2311,9 +2753,14 @@ function renderEnding(node) {
     const endingType = node.ending_type || 'neutral';
     const typeIcons = { good: 'star', bad: 'skull', neutral: 'scale' };
     const typeLabels = { good: t('ending_good'), bad: t('ending_bad'), neutral: t('ending_neutral') };
+    const artEnabled = state.settings.images === 'on';
+    const artHTML = artEnabled
+        ? `<div class="story-art story-art-placeholder" id="ending-art"><div class="loading-spinner"></div></div>`
+        : '';
 
     $('story-content').innerHTML = `
         <div class="ending-section">
+            ${artHTML}
             <div class="ending-ornament"><i data-lucide="${typeIcons[endingType] || 'crown'}"></i></div>
             <h2 class="ending-title ${endingType}">${typeLabels[endingType]}</h2>
             <div class="ending-text" id="ending-text-el"></div>
@@ -2338,6 +2785,10 @@ function renderEnding(node) {
         </div>
     `;
 
+    if (artEnabled) {
+        maybeRenderArt(node, $('ending-art'));
+    }
+
     // Typewriter for ending text
     typewriterEffect($('ending-text-el'), node.story, () => {});
     initIcons();
@@ -2345,16 +2796,19 @@ function renderEnding(node) {
 
 // ── Restart / Back ──
 function restartStory() {
+    ensurePuterAuth();   // button click = user gesture; keep Puter session ready
     state.chapter = 0;
     state.turn = 0;
     state.history = [];
     state.currentStory = null;
     state.storySummary = '';
+    cancelPendingArt();
     generateStoryNode(null);
 }
 
 function goBack() {
     if (state.history.length === 0) return;
+    ensurePuterAuth();   // button click = user gesture; keep Puter session ready
     const last = state.history.pop();
     state.currentStory = last.story;
     state.turn--;
@@ -2469,7 +2923,7 @@ function escapeHtml(str) {
 );
 
 // Load saved settings
-['tone', 'difficulty', 'language', 'langlevel', 'style'].forEach(settingKey => {
+['tone', 'difficulty', 'language', 'langlevel', 'style', 'images', 'imgprovider'].forEach(settingKey => {
     const saved = localStorage.getItem('cyoa_' + settingKey);
     const normalized = settingKey === 'language' ? normalizeLang(saved) : saved;
     if (normalized) {
@@ -2479,6 +2933,12 @@ function escapeHtml(str) {
         });
     }
 });
+// When no Illustrations Provider was saved, keep the UI in sync with the
+// auto-selected default (MiniMax when a key is configured, else Puter).
+document.querySelectorAll('#imgprovider-select .setting-option').forEach(o => {
+    o.classList.toggle('selected', o.dataset.value === state.settings.illProvider);
+});
+$('imgprovider-group').style.display = state.settings.images === 'on' ? '' : 'none';
 
 // Apply UI translations for the current language
 applyTranslations();

@@ -1,0 +1,17 @@
+# Secrets — API keys
+vault/
+*.env
+*.key
+*.pem
+
+# OS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log

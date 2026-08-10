@@ -28,8 +28,17 @@ Pick a provider on the **Connect Your AI** screen. Keys and selected models are 
 | **OpenRouter** | Free tier with many open models | Get a free API key at [openrouter.ai/openrouter/free](https://openrouter.ai/openrouter/free). Only free models are listed. |
 | **Ollama** | Runs locally (or cloud models via your Ollama account) | No key needed. Requires the [Ollama app](https://ollama.com/download) running at `localhost:11434`. |
 | **ChatGPT** | OpenAI's models | API key from [platform.openai.com/api-keys](https://platform.openai.com/api-keys). The available chat models are fetched live with your key. |
+| **MiniMax** | OpenAI-compatible endpoint with the M-series models | API key from [platform.minimax.io](https://platform.minimax.io/user-center/basic-information/interface-key). |
 
 Keys never leave your browser and are stored only in your browser's `localStorage`.
+
+### Scene Illustrations
+
+Enable **Story Illustrations** in the settings. MiniMax is used automatically whenever a MiniMax API key is configured (as the active provider or saved under the MiniMax key); otherwise it falls back to Puter:
+- **MiniMax (API key)** — uses the MiniMax image API with your MiniMax key. A fixed per-story seed keeps the visual style consistent across every scene.
+- **Puter (free)** — unlimited, no API key needed. Powered by Puter.js (Google Imagen); players cover their own usage with a free Puter account.
+
+You can force a specific provider with the **Illustrations Provider** toggle. If you pick MiniMax but no key is configured, it falls back to Puter automatically.
 
 ## Features
 
