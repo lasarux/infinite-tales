@@ -1,0 +1,2489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title> Infinite Tales — Choose Your Own Adventure</title>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+/* ═══════════════════════════════════════════════════════════
+   INFINITE TALES — A Dynamic Choose Your Own Adventure Engine
+   ═══════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap');
+
+/* ── Root Variables & Theme ── */
+:root {
+    --bg-deep: #0a0a0f;
+    --bg-mid: #12121a;
+    --bg-card: #1a1a26;
+    --bg-card-hover: #22222e;
+    --border: #2a2a3a;
+    --border-bright: #3a3a4a;
+    --text-primary: #e8e6e0;
+    --text-secondary: #a8a4b0;
+    --text-muted: #6b6878;
+    --accent-gold: #d4a85a;
+    --accent-gold-bright: #f0c878;
+    --accent-crimson: #c44545;
+    --accent-teal: #4a9a8a;
+    --accent-purple: #8a6ab4;
+    --accent-blue: #5a8ac4;
+    --shadow-glow: 0 0 40px rgba(212, 168, 90, 0.08);
+    --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: 'Crimson Text', Georgia, serif;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+    line-height: 1.7;
+    font-size: 18px;
+}
+
+/* ── Animated Background ── */
+#bg-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    opacity: 0.6;
+}
+
+.vignette {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 30%, var(--bg-deep) 95%);
+}
+
+/* ── Screen Container ── */
+.screen {
+    position: relative;
+    z-index: 2;
+    min-height: 100vh;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+    animation: fadeIn 0.6s ease;
+}
+
+.screen.active { display: flex; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+    0%, 100% { text-shadow: 0 0 10px rgba(212, 168, 90, 0.3); }
+    50% { text-shadow: 0 0 25px rgba(212, 168, 90, 0.6), 0 0 50px rgba(212, 168, 90, 0.2); }
+}
+
+@keyframes pulse-border {
+    0%, 100% { border-color: var(--border); }
+    50% { border-color: var(--accent-gold); }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+}
+
+@keyframes flicker {
+    0%, 100% { opacity: 1; }
+    48% { opacity: 1; }
+    49% { opacity: 0.85; }
+    50% { opacity: 1; }
+    52% { opacity: 0.9; }
+    53% { opacity: 1; }
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes typewriter-cursor {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+}
+
+/* ═══ START SCREEN ═══ */
+#start-screen {
+    justify-content: center;
+    text-align: center;
+}
+
+.logo-wrap {
+    margin-bottom: 3rem;
+    animation: fadeInUp 0.8s ease;
+}
+
+.logo-ornament {
+    font-size: 2.5rem;
+    color: var(--accent-gold);
+    margin-bottom: 1rem;
+    animation: float 4s ease-in-out infinite;
+}
+
+.logo-title {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    color: var(--accent-gold);
+    animation: shimmer 4s ease-in-out infinite;
+    margin-bottom: 0.5rem;
+}
+
+.logo-subtitle {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(0.9rem, 2vw, 1.1rem);
+    letter-spacing: 0.3em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-top: 0.5rem;
+}
+
+.logo-divider {
+    width: 200px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
+    margin: 1.5rem auto;
+}
+
+.logo-tagline {
+    font-style: italic;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    margin-top: 1rem;
+}
+
+/* ── Start Buttons ── */
+.start-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: center;
+    margin-top: 2rem;
+    animation: fadeInUp 1s ease 0.3s both;
+}
+
+/* ── Buttons ── */
+.btn {
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 1rem 2.5rem;
+    border: 2px solid var(--accent-gold);
+    background: transparent;
+    color: var(--accent-gold);
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 168, 90, 0.15), transparent);
+    transition: left 0.5s ease;
+}
+
+.btn:hover::before { left: 100%; }
+
+.btn:hover {
+    background: rgba(212, 168, 90, 0.1);
+    box-shadow: 0 0 30px rgba(212, 168, 90, 0.2);
+    transform: translateY(-2px);
+}
+
+.btn:active { transform: translateY(0); }
+
+.btn-primary {
+    background: linear-gradient(135deg, rgba(212, 168, 90, 0.15), rgba(212, 168, 90, 0.05));
+    color: var(--accent-gold-bright);
+    box-shadow: 0 0 20px rgba(212, 168, 90, 0.1);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, rgba(212, 168, 90, 0.25), rgba(212, 168, 90, 0.1));
+    box-shadow: 0 0 40px rgba(212, 168, 90, 0.3);
+}
+
+.btn-ghost {
+    border-color: var(--border-bright);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    padding: 0.6rem 1.5rem;
+}
+
+.btn-ghost:hover {
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
+    background: rgba(212, 168, 90, 0.05);
+}
+
+.btn-danger {
+    border-color: var(--accent-crimson);
+    color: var(--accent-crimson);
+}
+
+.btn-danger:hover {
+    background: rgba(196, 69, 69, 0.1);
+    box-shadow: 0 0 20px rgba(196, 69, 69, 0.2);
+}
+
+.btn-small {
+    font-size: 0.8rem;
+    padding: 0.5rem 1.2rem;
+}
+
+.btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* ═══ TOPIC SELECTION ═══ */
+#topic-screen { padding-top: 4rem; }
+
+.screen-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    animation: fadeInUp 0.6s ease;
+}
+
+.screen-title {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(1.8rem, 4vw, 2.5rem);
+    font-weight: 700;
+    color: var(--accent-gold);
+    letter-spacing: 0.1em;
+}
+
+.screen-subtitle {
+    color: var(--text-muted);
+    font-style: italic;
+    margin-top: 0.5rem;
+    font-size: 1.05rem;
+}
+
+.topic-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    max-width: 1200px;
+    width: 100%;
+    margin-bottom: 2rem;
+}
+
+.topic-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1.8rem;
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+    animation: fadeInUp 0.5s ease both;
+}
+
+.topic-card:nth-child(1) { animation-delay: 0.05s; }
+.topic-card:nth-child(2) { animation-delay: 0.1s; }
+.topic-card:nth-child(3) { animation-delay: 0.15s; }
+.topic-card:nth-child(4) { animation-delay: 0.2s; }
+.topic-card:nth-child(5) { animation-delay: 0.25s; }
+.topic-card:nth-child(6) { animation-delay: 0.3s; }
+.topic-card:nth-child(7) { animation-delay: 0.35s; }
+.topic-card:nth-child(8) { animation-delay: 0.4s; }
+.topic-card:nth-child(9) { animation-delay: 0.45s; }
+.topic-card:nth-child(10) { animation-delay: 0.5s; }
+.topic-card:nth-child(11) { animation-delay: 0.55s; }
+.topic-card:nth-child(12) { animation-delay: 0.6s; }
+
+.topic-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--card-accent, var(--accent-gold));
+    transform: scaleY(0);
+    transform-origin: bottom;
+    transition: transform 0.4s ease;
+}
+
+.topic-card:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-bright);
+    transform: translateY(-4px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.topic-card:hover::after { transform: scaleY(1); }
+
+.topic-icon {
+    font-size: 2rem;
+    margin-bottom: 0.8rem;
+    display: block;
+}
+
+.topic-name {
+    font-family: 'Cinzel', serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.05em;
+}
+
+.topic-desc {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+/* ── Custom Topic Input ── */
+.custom-topic-section {
+    max-width: 600px;
+    width: 100%;
+    margin: 2rem auto 0;
+    text-align: center;
+}
+
+.custom-topic-label {
+    color: var(--text-secondary);
+    font-style: italic;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.custom-topic-input {
+    width: 100%;
+    padding: 1rem 1.5rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-family: 'Crimson Text', serif;
+    font-size: 1rem;
+    transition: var(--transition);
+}
+
+.custom-topic-input:focus {
+    outline: none;
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 15px rgba(212, 168, 90, 0.15);
+}
+
+.custom-topic-input::placeholder { color: var(--text-muted); }
+
+/* ═══ SETTINGS MODAL ═══ */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-overlay.active { display: flex; }
+
+.modal {
+    background: var(--bg-mid);
+    border: 1px solid var(--border-bright);
+    border-radius: 8px;
+    padding: 2.5rem;
+    max-width: 500px;
+    width: 90%;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    animation: fadeInUp 0.4s ease;
+}
+
+.modal-title {
+    font-family: 'Cinzel', serif;
+    font-size: 1.5rem;
+    color: var(--accent-gold);
+    margin-bottom: 1.5rem;
+    text-align: center;
+    letter-spacing: 0.1em;
+}
+
+.modal-close {
+    position: absolute;
+    top: 1rem; right: 1rem;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.modal-close:hover { color: var(--accent-crimson); }
+
+.setting-group {
+    margin-bottom: 1.5rem;
+}
+
+.setting-label {
+    display: block;
+    font-family: 'Cinzel', serif;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.6rem;
+}
+
+.setting-input {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-family: 'Crimson Text', serif;
+    font-size: 0.95rem;
+    transition: var(--transition);
+}
+
+.setting-input:focus {
+    outline: none;
+    border-color: var(--accent-gold);
+}
+
+.setting-select {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.setting-option {
+    flex: 1;
+    min-width: 80px;
+    padding: 0.6rem 0.8rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    font-family: 'Cinzel', serif;
+    font-size: 0.8rem;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    letter-spacing: 0.05em;
+}
+
+.setting-option:hover { border-color: var(--border-bright); }
+
+.setting-option.selected {
+    background: rgba(212, 168, 90, 0.1);
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
+}
+
+.modal-hint {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-top: 0.4rem;
+    line-height: 1.4;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 2rem;
+}
+
+/* ═══ STORY SCREEN ═══ */
+#story-screen {
+    padding: 0;
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.story-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    width: 100%;
+    max-width: 800px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.story-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.story-badge {
+    font-family: 'Cinzel', serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.3rem 0.8rem;
+    border: 1px solid var(--border-bright);
+    border-radius: 3px;
+    color: var(--text-secondary);
+}
+
+.story-badge.topic-badge {
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
+}
+
+.story-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.icon-btn {
+    width: 36px; height: 36px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    font-size: 1rem;
+}
+
+.icon-btn:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
+}
+
+/* ── Story Content ── */
+.story-content {
+    padding: 2rem;
+    max-width: 800px;
+    width: 100%;
+    min-height: 50vh;
+}
+
+.story-path {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+}
+
+.path-step {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.path-separator { color: var(--border-bright); }
+
+.path-current { color: var(--accent-gold); font-style: italic; }
+
+.story-text-wrapper {
+    position: relative;
+    margin-bottom: 2rem;
+}
+
+.story-text {
+    font-size: 1.15rem;
+    line-height: 1.9;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    min-height: 100px;
+}
+
+.story-text p { margin-bottom: 1.2rem; }
+
+.story-text p:first-child::first-letter {
+    font-family: 'Cinzel', serif;
+    font-size: 3.5rem;
+    font-weight: 900;
+    color: var(--accent-gold);
+    float: left;
+    line-height: 0.9;
+    padding-right: 0.5rem;
+    padding-top: 0.3rem;
+}
+
+.typewriter-cursor {
+    display: inline-block;
+    width: 3px;
+    height: 1.2em;
+    background: var(--accent-gold);
+    vertical-align: text-bottom;
+    animation: typewriter-cursor 0.8s steps(1) infinite;
+    margin-left: 2px;
+}
+
+/* ── Loading Spinner ── */
+.loading-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    gap: 1.5rem;
+}
+
+.loading-spinner {
+    width: 50px; height: 50px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent-gold);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.loading-text {
+    color: var(--text-muted);
+    font-style: italic;
+    font-size: 1rem;
+    animation: flicker 2s ease-in-out infinite;
+}
+
+/* ── Choice Buttons ── */
+.choices-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 2rem;
+    animation: fadeInUp 0.5s ease;
+}
+
+.choice-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border-bright);
+    border-radius: 4px;
+    padding: 1.2rem 1.5rem;
+    color: var(--text-primary);
+    font-family: 'Crimson Text', serif;
+    font-size: 1.05rem;
+    cursor: pointer;
+    transition: var(--transition);
+    text-align: left;
+    position: relative;
+    overflow: hidden;
+    line-height: 1.6;
+}
+
+.choice-btn::before {
+    content: '▸';
+    margin-right: 0.8rem;
+    color: var(--accent-gold);
+    opacity: 0.5;
+    transition: var(--transition);
+    font-size: 0.9rem;
+}
+
+.choice-btn:hover {
+    background: var(--bg-card-hover);
+    border-left-color: var(--accent-gold);
+    border-left-width: 4px;
+    padding-left: 1.4rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    transform: translateX(4px);
+}
+
+.choice-btn:hover::before {
+    opacity: 1;
+    transform: translateX(2px);
+}
+
+.choice-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* ── Ending Screen ── */
+.ending-section {
+    text-align: center;
+    padding: 2rem;
+}
+
+.ending-ornament {
+    font-size: 2rem;
+    color: var(--accent-gold);
+    margin-bottom: 1.5rem;
+    animation: float 3s ease-in-out infinite;
+}
+
+.ending-title {
+    font-family: 'Cinzel', serif;
+    font-size: 2rem;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    margin-bottom: 2rem;
+    text-transform: uppercase;
+}
+
+.ending-title.good { color: var(--accent-teal); }
+.ending-title.bad { color: var(--accent-crimson); }
+.ending-title.neutral { color: var(--accent-gold); }
+
+.ending-text {
+    font-size: 1.15rem;
+    line-height: 1.9;
+    margin-bottom: 2rem;
+    text-align: left;
+    white-space: pre-wrap;
+}
+
+.ending-stats {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.ending-stat {
+    text-align: center;
+}
+
+.ending-stat-value {
+    font-family: 'Cinzel', serif;
+    font-size: 2rem;
+    color: var(--accent-gold);
+}
+
+.ending-stat-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 0.3rem;
+}
+
+.ending-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* ── Back Button Area ── */
+.back-area {
+    padding: 1rem 2rem 2rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* ═══ API KEY SCREEN ═══ */
+#apikey-screen {
+    justify-content: center;
+}
+
+.apikey-box {
+    max-width: 500px;
+    width: 100%;
+    text-align: center;
+}
+
+.apikey-icon {
+    font-size: 3rem;
+    margin-bottom: 1.5rem;
+    animation: float 3s ease-in-out infinite;
+}
+
+.apikey-title {
+    font-family: 'Cinzel', serif;
+    font-size: 1.8rem;
+    color: var(--accent-gold);
+    margin-bottom: 1rem;
+    letter-spacing: 0.05em;
+}
+
+.apikey-desc {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+    line-height: 1.7;
+}
+
+.apikey-input {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-family: 'Crimson Text', serif;
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+    transition: var(--transition);
+}
+
+.apikey-input:focus {
+    outline: none;
+    border-color: var(--accent-gold);
+}
+
+.apikey-provider .setting-option { flex: 1; min-width: 120px; }
+
+.apikey-model {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-family: 'Crimson Text', serif;
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+    cursor: pointer;
+}
+
+.apikey-model:focus { outline: none; border-color: var(--accent-gold); }
+
+.apikey-model option { background: var(--bg-mid); }
+
+.apikey-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.apikey-hint {
+    margin-top: 1.5rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.apikey-hint a {
+    color: var(--accent-gold);
+    text-decoration: none;
+}
+
+.apikey-hint a:hover { text-decoration: underline; }
+
+/* ── Toast Notification ── */
+#toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--bg-card);
+    border: 1px solid var(--accent-gold);
+    border-radius: 4px;
+    padding: 1rem 2rem;
+    color: var(--text-primary);
+    z-index: 200;
+    transition: transform 0.4s ease;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    font-size: 0.95rem;
+}
+
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+#toast.error { border-color: var(--accent-crimson); }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    body { font-size: 16px; }
+    .screen { padding: 1rem; }
+    .story-header { padding: 1rem; }
+    .story-content { padding: 1.5rem 1rem; }
+    .topic-grid { grid-template-columns: 1fr; }
+    .btn { padding: 0.8rem 1.8rem; font-size: 0.9rem; }
+    .story-text { font-size: 1.05rem; }
+    .ending-title { font-size: 1.5rem; }
+    .modal { padding: 1.5rem; }
+}
+
+/* ── Lucide Icons ── */
+svg.lucide { vertical-align: middle; }
+.topic-icon svg { width: 2rem; height: 2rem; }
+.icon-btn svg { width: 1.25rem; height: 1.25rem; }
+.logo-ornament svg { width: 2.5rem; height: 2.5rem; }
+.apikey-icon svg { width: 3rem; height: 3rem; }
+.ending-ornament svg { width: 2rem; height: 2rem; }
+.modal-close svg { width: 1.5rem; height: 1.5rem; }
+.btn svg { width: 1.1rem; height: 1.1rem; }
+.story-badge svg { width: 0.85rem; height: 0.85rem; }
+.story-path svg { width: 0.8rem; height: 0.8rem; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-gold); }
+
+/* ── Accessibility ── */
+@media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+:focus-visible { outline: 2px solid var(--accent-gold); outline-offset: 2px; }
+</style>
+</head>
+<body>
+
+<!-- Animated Background -->
+<canvas id="bg-canvas"></canvas>
+<div class="vignette"></div>
+
+<!-- ═══ START SCREEN ═══ -->
+<div id="start-screen" class="screen active">
+    <div class="logo-wrap">
+        <div class="logo-ornament"><i data-lucide="crown"></i></div>
+        <h1 class="logo-title">Infinite Tales</h1>
+        <div class="logo-divider"></div>
+        <p class="logo-subtitle" data-i18n="brand_subtitle">Choose Your Own Adventure</p>
+        <p class="logo-tagline" data-i18n="brand_tagline">Every story is unique. Every choice matters. Every adventure is yours.</p>
+    </div>
+    <div class="start-actions">
+        <button class="btn btn-primary" data-i18n="btn_begin" onclick="goToTopicScreen()">Begin Your Journey</button>
+        <button class="btn btn-ghost" onclick="openSettings()"><i data-lucide="settings"></i> <span data-i18n="btn_settings">Settings</span></button>
+        <button class="btn btn-ghost" onclick="goToApiKeyScreen()"><i data-lucide="brain"></i> <span data-i18n="btn_connect">Connect Your AI</span></button>
+    </div>
+</div>
+
+<!-- ═══ TOPIC SELECTION ═══ -->
+<div id="topic-screen" class="screen">
+    <div class="screen-header">
+        <h2 class="screen-title" data-i18n="topic_title">Choose Your Tale</h2>
+        <p class="screen-subtitle" data-i18n="topic_subtitle">Select a genre to begin your unique adventure</p>
+    </div>
+    <div class="topic-grid" id="topic-grid"></div>
+    <div class="custom-topic-section">
+        <label class="custom-topic-label" data-i18n="topic_or_custom">— Or create your own —</label>
+        <input type="text" class="custom-topic-input" id="custom-topic-input" data-i18n-placeholder="topic_placeholder" placeholder="e.g., A heist in a neon-lit cyberpunk city..." onkeypress="if(event.key==='Enter')startCustomStory()">
+        <div style="margin-top:1rem">
+            <button class="btn btn-small" data-i18n="topic_custom_btn" onclick="startCustomStory()">Create Custom Tale</button>
+        </div>
+    </div>
+    <div style="margin-top:2rem">
+        <button class="btn btn-ghost btn-small" onclick="showScreen('start-screen')"><i data-lucide="arrow-left"></i> <span data-i18n="back">Back</span></button>
+    </div>
+</div>
+
+<!-- ═══ API KEY SCREEN ═══ -->
+<div id="apikey-screen" class="screen">
+    <div class="apikey-box">
+        <div class="apikey-icon"><i data-lucide="brain"></i></div>
+        <h2 class="apikey-title" data-i18n="connect_title">Connect Your AI</h2>
+        <p class="apikey-desc" data-i18n="connect_desc">
+            Infinite Tales generates stories dynamically using AI. Choose a provider and pick a model to begin.
+        </p>
+
+        <label class="setting-label" style="text-align:left;margin-bottom:0.6rem;" data-i18n="connect_provider">Provider</label>
+        <div class="setting-select apikey-provider" id="provider-select">
+            <div class="setting-option" data-value="openrouter" onclick="selectProvider('openrouter',this)">OpenRouter</div>
+            <div class="setting-option" data-value="ollama" onclick="selectProvider('ollama',this)">Ollama</div>
+            <div class="setting-option" data-value="openai" onclick="selectProvider('openai',this)">ChatGPT</div>
+        </div>
+
+        <input type="password" class="apikey-input" id="apikey-input" placeholder="Paste your API key (sk-...)" style="margin-top:1rem;">
+        <select class="apikey-model" id="apikey-model"></select>
+        <div class="apikey-actions">
+            <button class="btn btn-primary" data-i18n="connect_save" onclick="saveConnection()">Save & Continue</button>
+            <button class="btn btn-ghost" onclick="showScreen('start-screen')"><i data-lucide="arrow-left"></i> <span data-i18n="back">Back</span></button>
+        </div>
+        <p class="apikey-hint" id="apikey-hint"></p>
+    </div>
+</div>
+
+<!-- ═══ STORY SCREEN ═══ -->
+<div id="story-screen" class="screen">
+    <div class="story-header">
+        <div class="story-meta">
+            <span class="story-badge topic-badge" id="story-topic-badge" data-i18n="badge_genre">Genre</span>
+            <span class="story-badge" id="story-chapter-badge">Chapter 1</span>
+            <span class="story-badge" id="story-turn-badge">Turn 1</span>
+        </div>
+        <div class="story-controls">
+            <button class="icon-btn" onclick="restartStory()" title="Restart" data-i18n-title="btn_restart_title"><i data-lucide="rotate-ccw"></i></button>
+            <button class="icon-btn" onclick="goToTopicScreen()" title="New Story" data-i18n-title="btn_new_story_title"><i data-lucide="x"></i></button>
+        </div>
+    </div>
+    <div class="story-content" id="story-content">
+        <!-- Story content is injected here -->
+    </div>
+    <div class="back-area" id="back-area" style="display:none">
+        <button class="btn btn-ghost btn-small" onclick="goBack()"><i data-lucide="arrow-left"></i> <span data-i18n="btn_undo">Undo Last Choice</span></button>
+    </div>
+</div>
+
+<!-- ═══ SETTINGS MODAL ═══ -->
+<div class="modal-overlay" id="settings-modal">
+    <div class="modal">
+        <button class="modal-close" onclick="closeSettings()"><i data-lucide="x"></i></button>
+        <h2 class="modal-title" data-i18n="settings_title">Adventure Settings</h2>
+
+        <div class="setting-group">
+            <label class="setting-label" data-i18n="set_tone">Tone</label>
+            <div class="setting-select" id="tone-select">
+                <div class="setting-option selected" data-value="balanced" data-i18n="tone_balanced" onclick="selectSetting('tone-select',this)">Balanced</div>
+                <div class="setting-option" data-value="light" data-i18n="tone_light" onclick="selectSetting('tone-select',this)">Light</div>
+                <div class="setting-option" data-value="dark" data-i18n="tone_dark" onclick="selectSetting('tone-select',this)">Dark</div>
+                <div class="setting-option" data-value="horror" data-i18n="tone_horror" onclick="selectSetting('tone-select',this)">Horror</div>
+                <div class="setting-option" data-value="humorous" data-i18n="tone_humorous" onclick="selectSetting('tone-select',this)">Humorous</div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <label class="setting-label" data-i18n="set_difficulty">Difficulty / Stakes</label>
+            <div class="setting-select" id="difficulty-select">
+                <div class="setting-option selected" data-value="medium" data-i18n="diff_medium" onclick="selectSetting('difficulty-select',this)">Medium</div>
+                <div class="setting-option" data-value="low" data-i18n="diff_low" onclick="selectSetting('difficulty-select',this)">Low</div>
+                <div class="setting-option" data-value="high" data-i18n="diff_high" onclick="selectSetting('difficulty-select',this)">High</div>
+            </div>
+            <p class="modal-hint" data-i18n="diff_hint">Higher stakes mean deadlier consequences and more endings.</p>
+        </div>
+
+        <div class="setting-group">
+            <label class="setting-label" data-i18n="set_language">Language</label>
+            <div class="setting-select" id="language-select">
+                <div class="setting-option selected" data-value="en" onclick="selectSetting('language-select',this)">English</div>
+                <div class="setting-option" data-value="es" onclick="selectSetting('language-select',this)">Español</div>
+                <div class="setting-option" data-value="fr" onclick="selectSetting('language-select',this)">Français</div>
+                <div class="setting-option" data-value="pt" onclick="selectSetting('language-select',this)">Português</div>
+                <div class="setting-option" data-value="de" onclick="selectSetting('language-select',this)">Deutsch</div>
+                <div class="setting-option" data-value="it" onclick="selectSetting('language-select',this)">Italiano</div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <label class="setting-label" data-i18n="set_langlevel">Language Level</label>
+            <div class="setting-select" id="langlevel-select">
+                <div class="setting-option" data-value="kid" data-i18n="lang_kid" onclick="selectSetting('langlevel-select',this)">Kid</div>
+                <div class="setting-option" data-value="learning" data-i18n="lang_learning" onclick="selectSetting('langlevel-select',this)">Learning</div>
+                <div class="setting-option" data-value="basic" data-i18n="lang_basic" onclick="selectSetting('langlevel-select',this)">Basic</div>
+                <div class="setting-option selected" data-value="intermediate" data-i18n="lang_intermediate" onclick="selectSetting('langlevel-select',this)">Intermediate</div>
+                <div class="setting-option" data-value="advanced" data-i18n="lang_advanced" onclick="selectSetting('langlevel-select',this)">Advanced</div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <label class="setting-label" data-i18n="set_style">Writing Style</label>
+            <div class="setting-select" id="style-select">
+                <div class="setting-option selected" data-value="immersive" data-i18n="style_immersive" onclick="selectSetting('style-select',this)">Immersive</div>
+                <div class="setting-option" data-value="concise" data-i18n="style_concise" onclick="selectSetting('style-select',this)">Concise</div>
+                <div class="setting-option" data-value="literary" data-i18n="style_literary" onclick="selectSetting('style-select',this)">Literary</div>
+                <div class="setting-option" data-value="cinematic" data-i18n="style_cinematic" onclick="selectSetting('style-select',this)">Cinematic</div>
+            </div>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn btn-primary btn-small" data-i18n="btn_save_settings" onclick="closeSettings()">Save Settings</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ TOAST ═══ -->
+<div id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   INFINITE TALES — JavaScript Engine
+   ═══════════════════════════════════════════════════════════ */
+
+// ── Topic Definitions ──
+const TOPICS = [
+    { id: 'fantasy', icon: 'sword', accent: '#d4a85a',
+      name: { en: 'Fantasy Quest', es: 'Aventura de fantasía', fr: 'Quête fantastique', pt: 'Jornada de fantasia', de: 'Fantasy-Quest', it: 'Avventura fantasy' },
+      desc: { en: 'Magic, dragons, and epic quests in a medieval realm of wonder.', es: 'Magia, dragones y épicas misiones en un reino medieval maravilloso.', fr: 'Magie, dragons et quêtes épiques dans un royaume médiéval merveilleux.', pt: 'Magia, dragões e jornadas épicas em um reino medieval de maravilhas.', de: 'Magie, Drachen und epische Quests in einem wunderbaren mittelalterlichen Reich.', it: 'Magia, draghi e quest epiche in un regno medievale meraviglioso.' },
+      prompt: 'A fantasy adventure in a world of magic, mythical creatures, and ancient kingdoms. The hero may encounter wizards, dragons, enchanted forests, and legendary artifacts.' },
+    { id: 'scifi', icon: 'rocket', accent: '#5a8ac4',
+      name: { en: 'Sci-Fi Odyssey', es: 'Odisea de ciencia ficción', fr: 'Odyssée de science-fiction', pt: 'Odisseia de ficção científica', de: 'Sci-Fi-Odyssee', it: 'Odissea fantascientifica' },
+      desc: { en: 'Space exploration, alien worlds, and technology beyond imagination.', es: 'Exploración espacial, mundos alienígenas y tecnología más allá de la imaginación.', fr: 'Exploration spatiale, mondes extraterrestres et technologie au-delà de l\'imagination.', pt: 'Exploração espacial, mundos alienígenas e tecnologia além da imaginação.', de: 'Weltraumforschung, fremde Welten und Technologie jenseits der Vorstellungskraft.', it: 'Esplorazione spaziale, mondi alieni e tecnologia oltre l\'immaginazione.' },
+      prompt: 'A science fiction adventure involving space exploration, advanced technology, alien civilizations, and the mysteries of the universe. Think starships, AI, and distant planets.' },
+    { id: 'mystery', icon: 'search', accent: '#8a8a9a',
+      name: { en: 'Detective Mystery', es: 'Misterio policiaco', fr: 'Mystère policier', pt: 'Mistério policial', de: 'Detektiv-Mysterium', it: 'Mistero investigativo' },
+      desc: { en: 'Unravel clues, interrogate suspects, and solve the impossible crime.', es: 'Desentraña pistas, interroga sospechosos y resuelve el crimen imposible.', fr: 'Découvrez des indices, interrogez des suspects et résolvez le crime impossible.', pt: 'Desvende pistas, interroge suspeitos e resolva o crime impossível.', de: 'Entwirre Hinweise, verhöre Verdächtige und löse das unmögliche Verbrechen.', it: 'Scopri indizi, interroga i sospettati e risolvi il crimine impossibile.' },
+      prompt: 'A detective mystery where the player is an investigator trying to solve a crime. The story involves gathering clues, interrogating suspects, and making deductions. The setting can be noir, modern, or historical.' },
+    { id: 'horror', icon: 'flame', accent: '#c44545',
+      name: { en: 'Horror Survival', es: 'Supervivencia de terror', fr: 'Horreur et survie', pt: 'Terror e sobrevivência', de: 'Horror-Überleben', it: 'Sopravvivenza horror' },
+      desc: { en: 'Face unspeakable terrors in a fight for your sanity and survival.', es: 'Enfréntate a terrores indescriptibles luchando por tu cordura y tu vida.', fr: 'Affrontez des terreurs indicibles dans un combat pour votre raison et votre survie.', pt: 'Enfrente terrores indescritíveis em uma luta pela sanidade e sobrevivência.', de: 'Stelle dich unaussprechlichen Schrecken im Kampf um deinen Verstand und dein Überleben.', it: 'Affronta terrori indicibili in una lotta per la tua sanità e sopravvivenza.' },
+      prompt: 'A horror survival story filled with dread, tension, and the unknown. The player faces supernatural or psychological threats. Include jump scares, creeping dread, and life-or-death decisions.' },
+    { id: 'pirate', icon: 'ship-wheel', accent: '#c4a045',
+      name: { en: 'Pirate Adventure', es: 'Aventura pirata', fr: 'Aventure pirate', pt: 'Aventura pirata', de: 'Piraten-Abenteuer', it: 'Avventura pirata' },
+      desc: { en: 'Sail the high seas, seek treasure, and live by the pirate code.', es: 'Navega por alta mar, busca tesoros y vive según el código pirata.', fr: 'Naviguez sur les mers, cherchez des trésors et vivez selon le code des pirates.', pt: 'Navegue em alto-mar, procure tesouros e viva pelo código dos piratas.', de: 'Segle über die Meere, suche Schätze und lebe nach dem Piratenkodex.', it: 'Naviga in mare aperto, cerca tesori e vivi secondo il codice dei pirati.' },
+      prompt: 'A swashbuckling pirate adventure on the high seas. Treasure maps, naval battles, mutiny, desert islands, and the pirate code. The player is a pirate captain or crew member.' },
+    { id: 'post-apoc', icon: 'radiation', accent: '#9a7a5a',
+      name: { en: 'Post-Apocalyptic', es: 'Postapocalíptico', fr: 'Post-apocalyptique', pt: 'Pós-apocalíptico', de: 'Postapokalyptisch', it: 'Post-apocalittico' },
+      desc: { en: 'Survive in a world destroyed. Scavenge, fight, and rebuild.', es: 'Sobrevive en un mundo destruido. Rebusca, lucha y reconstruye.', fr: 'Survivez dans un monde détruit. Fouillez, combattez et reconstruisez.', pt: 'Sobreviva em um mundo destruído. Recolha, lute e reconstrua.', de: 'Überlebe in einer zerstörten Welt. Durchsuche, kämpfe und baue neu auf.', it: 'Sopravvivi in un mondo distrutto. Rovista, combatti e ricostruisci.' },
+      prompt: 'A post-apocalyptic survival story. The world has been devastated by war, plague, or disaster. The player must scavenge resources, face raiders, and find hope in the wasteland.' },
+    { id: 'cyberpunk', icon: 'building-2', accent: '#b45a8a',
+      name: { en: 'Cyberpunk Heist', es: 'Golpe ciberpunk', fr: 'Braquage cyberpunk', pt: 'Assalto cyberpunk', de: 'Cyberpunk-Coup', it: 'Colpo cyberpunk' },
+      desc: { en: 'Hack megacorps, upgrade your body, and rule the neon streets.', es: 'Hackea megacorporaciones, mejora tu cuerpo y domina las calles de neón.', fr: 'Piratez des mégacorporations, améliorez votre corps et règnez sur les rues de néon.', pt: 'Hackeie megacorporações, aprimore seu corpo e domine as ruas de neon.', de: 'Hacke Megakonzerne, verbessere deinen Körper und herrsche über die Neonstraßen.', it: 'Hackera le megacorporazioni, potenzia il tuo corpo e domina le strade al neon.' },
+      prompt: 'A cyberpunk adventure in a dystopian future. Megacorporations rule, cybernetic enhancements are common, and the player is a hacker, mercenary, or rogue navigating the neon-lit underbelly of the city.' },
+    { id: 'medieval', icon: 'castle', accent: '#a45a2a',
+      name: { en: 'Medieval Court', es: 'Corte medieval', fr: 'Cour médiévale', pt: 'Corte medieval', de: 'Mittelalterlicher Hof', it: 'Corte medievale' },
+      desc: { en: 'Intrigue, betrayal, and power in the halls of a royal court.', es: 'Intrigas, traiciones y poder en los salones de una corte real.', fr: 'Intrigues, trahisons et pouvoir dans les couloirs d\'une cour royale.', pt: 'Intrigas, traições e poder nos salões de uma corte real.', de: 'Intrigen, Verrat und Macht in den Hallen eines Königshofs.', it: 'Intrighi, tradimenti e potere nelle sale di una corte reale.' },
+      prompt: 'A medieval court intrigue story. The player is a noble or advisor in a royal court. Political schemes, betrayals, alliances, and the fate of a kingdom hang in the balance.' },
+    { id: 'haunted', icon: 'ghost', accent: '#6a8a6a',
+      name: { en: 'Haunted Manor', es: 'Mansión embrujada', fr: 'Manoir hanté', pt: 'Mansão assombrada', de: 'Spukschloss', it: 'Villa infestata' },
+      desc: { en: 'Explore a cursed estate where the walls whisper and shadows move.', es: 'Explora una finca maldita donde las paredes susurran y las sombras se mueven.', fr: 'Explorez un domaine maudit où les murs murmurent et les ombres se déplacent.', pt: 'Explore uma propriedade amaldiçoada onde as paredes sussurram e as sombras se movem.', de: 'Erkunde ein verfluchtes Anwesen, in dem Wände flüstern und Schatten sich bewegen.', it: 'Esplora una tenuta maledetta dove le pareti sussurrano e le ombre si muovono.' },
+      prompt: 'A haunted house exploration. The player enters a cursed or haunted manor, mansion, or estate. Ghosts, cursed objects, dark secrets, and the manor history are central. The player must survive the night and uncover the truth.' },
+    { id: 'jungle', icon: 'tree-palm', accent: '#4a9a5a',
+      name: { en: 'Jungle Expedition', es: 'Expedición a la selva', fr: 'Expédition en jungle', pt: 'Expedição à selva', de: 'Dschungel-Expedition', it: 'Spedizione nella giungla' },
+      desc: { en: 'Venture into uncharted jungles, ancient ruins, and lost civilizations.', es: 'Aventúrate en selvas inexploradas, ruinas antiguas y civilizaciones perdidas.', fr: 'Aventurez-vous dans des jungles inexplorées, des ruines anciennes et des civilisations perdues.', pt: 'Aventure-se por selvas inexploradas, ruínas antigas e civilizações perdidas.', de: 'Wage dich in unerforschte Dschungel, alte Ruinen und verlorene Zivilisationen.', it: 'Avventurati in giungle inesplorate, antiche rovine e civiltà perdute.' },
+      prompt: 'An expedition into deep uncharted jungle. The player is an explorer seeking lost ruins, ancient civilizations, or a legendary treasure. Wildlife, traps, indigenous peoples, and the jungle itself are obstacles.' },
+    { id: 'western', icon: 'sun', accent: '#c4852a',
+      name: { en: 'Wild West', es: 'Lejano Oeste', fr: 'Far West', pt: 'Velho Oeste', de: 'Wilder Westen', it: 'Far West' },
+      desc: { en: 'Frontier justice, outlaws, and gunfights in the untamed West.', es: 'Justicia fronteriza, forajidos y tiroteos en el indómito Oeste.', fr: 'Justice de la frontière, hors-la-loi et fusillades dans l\'Ouest sauvage.', pt: 'Justiça de fronteira, foras da lei e tiroteios no Oeste selvagem.', de: 'Grenzgerechtigkeit, Gesetzlose und Schießereien im wilden Westen.', it: 'Giustizia di frontiera, fuorilegge e sparatorie nel selvaggio West.' },
+      prompt: 'A Wild West adventure. The player is a gunslinger, sheriff, or outlaw in the American frontier. Saloons, standoffs, cattle drives, and frontier justice define the world.' },
+    { id: 'underwater', icon: 'waves', accent: '#4a7a9a',
+      name: { en: 'Deep Sea', es: 'Mar profundo', fr: 'Grands fonds', pt: 'Mar profundo', de: 'Tiefsee', it: 'Abissi marini' },
+      desc: { en: 'Descend into the abyss where leviathans sleep and secrets drown.', es: 'Desciende al abismo donde duermen los leviatanes y se ahogan los secretos.', fr: 'Descendez dans l\'abysse où dorment les léviathans et où se noient les secrets.', pt: 'Desça ao abismo onde os leviatãs dormem e os segredos se afogam.', de: 'Steige hinab in den Abgrund, wo Leviathane schlafen und Geheimnisse ertrinken.', it: 'Scendi nell\'abisso dove dormono i leviatani e i segreti annegano.' },
+      prompt: 'A deep-sea adventure. The player is in a submarine, underwater station, or exploring the ocean depths. Bioluminescent creatures, underwater ruins, crushing pressure, and the unknown abyss create tension.' },
+    { id: 'time-travel', icon: 'hourglass', accent: '#9a6ac4',
+      name: { en: 'Time Travel', es: 'Viaje en el tiempo', fr: 'Voyage dans le temps', pt: 'Viagem no tempo', de: 'Zeitreise', it: 'Viaggio nel tempo' },
+      desc: { en: 'Navigate paradoxes, alter history, and face the consequences.', es: 'Sortea paradojas, altera la historia y afronta las consecuencias.', fr: 'Naviguez parmi les paradoxes, modifiez l\'histoire et affrontez les conséquences.', pt: 'Navegue por paradoxos, altere a história e enfrente as consequências.', de: 'Manövriere durch Paradoxien, verändere die Geschichte und trage die Konsequenzen.', it: 'Naviga tra i paradossi, altera la storia e affronta le conseguenze.' },
+      prompt: 'A time travel adventure. The player has access to time travel technology or finds themselves displaced in time. Changing the past has consequences, and paradoxes are a real danger. Different historical eras may be visited.' },
+    { id: 'school', icon: 'graduation-cap', accent: '#7a5ac4',
+      name: { en: 'Magic Academy', es: 'Academia de magia', fr: 'Académie de magie', pt: 'Academia de magia', de: 'Magische Akademie', it: 'Accademia di magia' },
+      desc: { en: 'Study arcane arts, uncover secrets, and survive magical exams.', es: 'Estudia artes arcanas, descubre secretos y sobrevive a los exámenes mágicos.', fr: 'Étudiez les arts occultes, découvrez des secrets et survivez aux examens magiques.', pt: 'Estude artes arcanas, descubra segredos e sobreviva aos exames mágicos.', de: 'Studiere verborgene Künste, entdecke Geheimnisse und überlebe magische Prüfungen.', it: 'Studia le arti arcane, scopri segreti e sopravvivi agli esami magici.' },
+      prompt: 'A story set in a school for magic or supernatural abilities. The player is a student. Classes, rivalries, secret societies, magical duels, and a hidden mystery at the academy drive the plot.' },
+    { id: 'vampire', icon: 'moon', accent: '#8a3a3a',
+      name: { en: 'Vampire Noir', es: 'Noir de vampiros', fr: 'Vampire noir', pt: 'Noir de vampiros', de: 'Vampir-Noir', it: 'Vampiro noir' },
+      desc: { en: 'Navigate the eternal night politics of the undead society.', es: 'Navega la política de la noche eterna de la sociedad de los no muertos.', fr: 'Naviguez dans la politique de la nuit éternelle de la société des morts-vivants.', pt: 'Navegue pela política da noite eterna da sociedade dos mortos-vivos.', de: 'Navigiere durch die Politik der ewigen Nacht in der Gesellschaft der Untoten.', it: 'Naviga nella politica dell\'eterna notte della società dei non morti.' },
+      prompt: 'A vampire noir story. The player is a vampire navigating the politics and dangers of vampire society. Different vampire factions, hunters, ancient bloodlines, and the struggle between humanity and the beast within.' },
+    { id: 'space-station', icon: 'satellite', accent: '#5a9a8a',
+      name: { en: 'Space Station', es: 'Estación espacial', fr: 'Station spatiale', pt: 'Estação espacial', de: 'Raumstation', it: 'Stazione spaziale' },
+      desc: { en: 'Something went wrong on the station. Find out what before it finds you.', es: 'Algo salió mal en la estación. Descubre qué, antes de que te encuentre.', fr: 'Quelque chose a mal tourné sur la station. Découvrez quoi avant qu\'il ne vous trouve.', pt: 'Algo deu errado na estação. Descubra o quê antes que descubra você.', de: 'Auf der Station ist etwas schiefgelaufen. Finde heraus, was, bevor es dich findet.', it: 'Qualcosa è andato storto sulla stazione. Scopri cosa prima che ti trovi.' },
+      prompt: 'A story set on a space station. Something has gone wrong — a contagion, an alien presence, a systems failure, or a mutiny. The player must navigate the station, solve problems, and survive. claustrophobic and tense.' },
+    { id: 'fairy-tale', icon: 'sparkles', accent: '#c4b4d4',
+      name: { en: 'Dark Fairy Tale', es: 'Cuento oscuro', fr: 'Conte de fées sombre', pt: 'Conto de fadas sombrio', de: 'Dunkles Märchen', it: 'Fiaba oscura' },
+      desc: { en: 'A twisted take on classic fairy tales where wishes have teeth.', es: 'Una versión retorcida de los cuentos clásicos donde los deseos tienen dientes.', fr: 'Une version tordue des contes classiques où les vœux ont des dents.', pt: 'Uma versão retorcida dos contos clássicos onde os desejos têm dentes.', de: 'Eine verdrehte Version klassischer Märchen, in denen Wünsche Zähne haben.', it: 'Una versione distorta delle fiabe classiche dove i desideri hanno i denti.' },
+      prompt: 'A dark fairy tale adventure in the style of original Grimm brothers stories. Enchanted forests, talking animals, witches, curses, and bargains with dangerous magical beings. The tone is whimsical but with real danger.' },
+    { id: 'spy', icon: 'glasses', accent: '#5a5a6a',
+      name: { en: 'Espionage', es: 'Espionaje', fr: 'Espionnage', pt: 'Espionagem', de: 'Spionage', it: 'Spionaggio' },
+      desc: { en: 'Go undercover, crack codes, and prevent global catastrophe.', es: 'Actúa de incógnito, descifra códigos y evita una catástrofe mundial.', fr: 'Infiltrez-vous, déchiffrez des codes et empêchez une catastrophe mondiale.', pt: 'Vá disfarçado, decifre códigos e impeça uma catástrofe global.', de: 'Gehe undercover, knacke Codes und verhindere eine globale Katastrophe.', it: 'Vai sotto copertura, decifra codici e previeni una catastrofe globale.' },
+      prompt: 'An espionage thriller. The player is a secret agent on a mission. Gadgets, cover identities, double agents, high-stakes gambles, and preventing a global catastrophe. Cold war or modern setting.' },
+];
+
+// ── Languages & i18n ──
+const LANGUAGES = {
+    en: { code: 'en', name: 'English' },
+    es: { code: 'es', name: 'Spanish' },
+    fr: { code: 'fr', name: 'French' },
+    pt: { code: 'pt', name: 'Portuguese' },
+    de: { code: 'de', name: 'German' },
+    it: { code: 'it', name: 'Italian' },
+};
+
+const LANG_BY_NAME = { English: 'en', Spanish: 'es', French: 'fr', Portuguese: 'pt', German: 'de', Italian: 'it' };
+
+const I18N = {
+    en: {
+        brand_subtitle: `Choose Your Own Adventure`,
+        brand_tagline: `Every story is unique. Every choice matters. Every adventure is yours.`,
+        btn_begin: `Begin Your Journey`,
+        btn_settings: `Settings`,
+        btn_connect: `Connect Your AI`,
+        topic_title: `Choose Your Tale`,
+        topic_subtitle: `Select a genre to begin your unique adventure`,
+        topic_or_custom: `— Or create your own —`,
+        topic_placeholder: `e.g., A heist in a neon-lit cyberpunk city...`,
+        topic_custom_btn: `Create Custom Tale`,
+        custom_tale: `Custom Tale`,
+        back: `Back`,
+        connect_title: `Connect Your AI`,
+        connect_desc: `Infinite Tales generates stories dynamically using AI. Choose a provider and pick a model to begin.`,
+        connect_provider: `Provider`,
+        key_placeholder_openai: `Paste your API key (sk-...)`,
+        key_placeholder_ollama: `API key (optional, e.g. "ollama")`,
+        connect_save: `Save & Continue`,
+        hint_openai: `Get your API key at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a><br>Your key never leaves your browser.`,
+        key_placeholder_openrouter: `Paste your OpenRouter API key (sk-or-...)`,
+        hint_openrouter: `Get a free API key at <a href="https://openrouter.ai/openrouter/free" target="_blank">openrouter.ai/openrouter/free</a><br>Your key never leaves your browser.`,
+        hint_ollama: `Requires the <a href="https://ollama.com/download" target="_blank">Ollama app</a> installed and running locally.<br>Cloud models need you to be signed in to your Ollama account.`,
+        models_enter_key: `Enter your API key to load available models`,
+        models_loading: `Loading available models`,
+        models_error: `Couldn't load models. Check your API key.`,
+        badge_genre: `Genre`,
+        badge_chapter: `Chapter`,
+        badge_turn: `Turn`,
+        loading_begin: `Your tale begins to unfold...`,
+        loading_continue: `The story continues...`,
+        err_title: `Something went wrong`,
+        err_hint: `Make sure the Ollama app is running (localhost:11434) and you are signed in for cloud models.`,
+        btn_try_again: `Try Again`,
+        btn_new_topic: `Choose New Topic`,
+        btn_restart_title: `Restart`,
+        btn_new_story_title: `New Story`,
+        btn_undo: `Undo Last Choice`,
+        ending_good: `A Triumphant End`,
+        ending_bad: `Your Story Ends Here`,
+        ending_neutral: `The Journey Ends`,
+        stat_turns: `Turns`,
+        stat_chapters: `Chapters`,
+        stat_scenes: `Scenes`,
+        btn_new_adventure: `New Adventure`,
+        btn_different_genre: `Different Genre`,
+        settings_title: `Adventure Settings`,
+        set_tone: `Tone`,
+        tone_balanced: `Balanced`,
+        tone_light: `Light`,
+        tone_dark: `Dark`,
+        tone_horror: `Horror`,
+        tone_humorous: `Humorous`,
+        set_difficulty: `Difficulty / Stakes`,
+        diff_medium: `Medium`,
+        diff_low: `Low`,
+        diff_high: `High`,
+        diff_hint: `Higher stakes mean deadlier consequences and more endings.`,
+        set_language: `Language`,
+        set_langlevel: `Language Level`,
+        lang_kid: `Kid`,
+        lang_learning: `Learning`,
+        lang_basic: `Basic`,
+        lang_intermediate: `Intermediate`,
+        lang_advanced: `Advanced`,
+        set_style: `Writing Style`,
+        style_immersive: `Immersive`,
+        style_concise: `Concise`,
+        style_literary: `Literary`,
+        style_cinematic: `Cinematic`,
+        btn_save_settings: `Save Settings`,
+        toast_connected: `AI connected! Your adventures await.`,
+        toast_key_required: `Please enter your API key.`,
+        toast_topic_required: `Please describe your adventure topic.`,
+        err_parse: `Could not parse story response.`,
+        err_invalid: `Invalid story format.`,
+    },
+    es: {
+        brand_subtitle: `Elige tu propia aventura`,
+        brand_tagline: `Cada historia es única. Cada decisión importa. Cada aventura es tuya.`,
+        btn_begin: `Comienza tu viaje`,
+        btn_settings: `Ajustes`,
+        btn_connect: `Conecta tu IA`,
+        topic_title: `Elige tu relato`,
+        topic_subtitle: `Selecciona un género para comenzar tu aventura única`,
+        topic_or_custom: `— O crea el tuyo propio —`,
+        topic_placeholder: `p. ej., Un robo en una ciudad ciberpunk iluminada por neones...`,
+        topic_custom_btn: `Crear relato personalizado`,
+        custom_tale: `Relato personalizado`,
+        back: `Atrás`,
+        connect_title: `Conecta tu IA`,
+        connect_desc: `Infinite Tales genera historias dinámicamente con IA. Elige un proveedor y selecciona un modelo para comenzar.`,
+        connect_provider: `Proveedor`,
+        key_placeholder_openai: `Pega tu clave API (sk-...)`,
+        key_placeholder_ollama: `Clave API (opcional, p. ej. "ollama")`,
+        connect_save: `Guardar y continuar`,
+        hint_openai: `Obtén tu clave API en <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a><br>Tu clave nunca sale de tu navegador.`,
+        key_placeholder_openrouter: `Pega tu clave API de OpenRouter (sk-or-...)`,
+        hint_openrouter: `Obtén una clave API gratuita en <a href="https://openrouter.ai/openrouter/free" target="_blank">openrouter.ai/openrouter/free</a><br>Tu clave nunca sale de tu navegador.`,
+        hint_ollama: `Requiere la <a href="https://ollama.com/download" target="_blank">app de Ollama</a> instalada y en ejecución localmente.<br>Los modelos en la nube requieren que inicies sesión en tu cuenta de Ollama.`,
+        models_enter_key: `Introduce tu clave API para cargar los modelos disponibles`,
+        models_loading: `Cargando modelos disponibles`,
+        models_error: `No se pudieron cargar los modelos. Revisa tu clave API.`,
+        badge_genre: `Género`,
+        badge_chapter: `Capítulo`,
+        badge_turn: `Turno`,
+        loading_begin: `Tu relato comienza a desplegarse...`,
+        loading_continue: `La historia continúa...`,
+        err_title: `Algo salió mal`,
+        err_hint: `Asegúrate de que la app de Ollama esté en ejecución (localhost:11434) y de haber iniciado sesión para los modelos en la nube.`,
+        btn_try_again: `Reintentar`,
+        btn_new_topic: `Elegir nuevo tema`,
+        btn_restart_title: `Reiniciar`,
+        btn_new_story_title: `Nueva historia`,
+        btn_undo: `Deshacer última elección`,
+        ending_good: `Un final triunfal`,
+        ending_bad: `Tu historia termina aquí`,
+        ending_neutral: `El viaje termina`,
+        stat_turns: `Turnos`,
+        stat_chapters: `Capítulos`,
+        stat_scenes: `Escenas`,
+        btn_new_adventure: `Nueva aventura`,
+        btn_different_genre: `Otro género`,
+        settings_title: `Ajustes de la aventura`,
+        set_tone: `Tono`,
+        tone_balanced: `Equilibrado`,
+        tone_light: `Ligero`,
+        tone_dark: `Oscuro`,
+        tone_horror: `Terror`,
+        tone_humorous: `Humorístico`,
+        set_difficulty: `Dificultad / Riesgo`,
+        diff_medium: `Media`,
+        diff_low: `Baja`,
+        diff_high: `Alta`,
+        diff_hint: `Un mayor riesgo implica consecuencias más letales y más finales.`,
+        set_language: `Idioma`,
+        set_langlevel: `Nivel de idioma`,
+        lang_kid: `Infantil`,
+        lang_learning: `Aprendizaje`,
+        lang_basic: `Básico`,
+        lang_intermediate: `Intermedio`,
+        lang_advanced: `Avanzado`,
+        set_style: `Estilo de escritura`,
+        style_immersive: `Inmersivo`,
+        style_concise: `Conciso`,
+        style_literary: `Literario`,
+        style_cinematic: `Cinematográfico`,
+        btn_save_settings: `Guardar ajustes`,
+        toast_connected: `¡IA conectada! Tus aventuras te esperan.`,
+        toast_key_required: `Introduce tu clave API.`,
+        toast_topic_required: `Describe el tema de tu aventura.`,
+        err_parse: `No se pudo analizar la respuesta de la historia.`,
+        err_invalid: `Formato de historia no válido.`,
+    },
+    fr: {
+        brand_subtitle: `Choisissez votre propre aventure`,
+        brand_tagline: `Chaque histoire est unique. Chaque choix compte. Chaque aventure vous appartient.`,
+        btn_begin: `Commencez votre voyage`,
+        btn_settings: `Paramètres`,
+        btn_connect: `Connecter votre IA`,
+        topic_title: `Choisissez votre récit`,
+        topic_subtitle: `Sélectionnez un genre pour commencer votre aventure unique`,
+        topic_or_custom: `— Ou créez le vôtre —`,
+        topic_placeholder: `p. ex., Un braquage dans une ville cyberpunk baignée de néons...`,
+        topic_custom_btn: `Créer un récit personnalisé`,
+        custom_tale: `Récit personnalisé`,
+        back: `Retour`,
+        connect_title: `Connecter votre IA`,
+        connect_desc: `Infinite Tales génère des histoires dynamiquement grâce à l'IA. Choisissez un fournisseur et sélectionnez un modèle pour commencer.`,
+        connect_provider: `Fournisseur`,
+        key_placeholder_openai: `Collez votre clé API (sk-...)`,
+        key_placeholder_ollama: `Clé API (facultatif, p. ex. « ollama »)`,
+        connect_save: `Enregistrer et continuer`,
+        hint_openai: `Obtenez votre clé API sur <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a><br>Votre clé ne quitte jamais votre navigateur.`,
+        key_placeholder_openrouter: `Collez votre clé API OpenRouter (sk-or-...)`,
+        hint_openrouter: `Obtenez une clé API gratuite sur <a href="https://openrouter.ai/openrouter/free" target="_blank">openrouter.ai/openrouter/free</a><br>Votre clé ne quitte jamais votre navigateur.`,
+        hint_ollama: `Nécessite l'<a href="https://ollama.com/download" target="_blank">application Ollama</a> installée et exécutée localement.<br>Les modèles cloud nécessitent d'être connecté à votre compte Ollama.`,
+        models_enter_key: `Saisissez votre clé API pour charger les modèles disponibles`,
+        models_loading: `Chargement des modèles disponibles`,
+        models_error: `Impossible de charger les modèles. Vérifiez votre clé API.`,
+        badge_genre: `Genre`,
+        badge_chapter: `Chapitre`,
+        badge_turn: `Tour`,
+        loading_begin: `Votre récit commence à se dérouler...`,
+        loading_continue: `L'histoire continue...`,
+        err_title: `Quelque chose s'est mal passé`,
+        err_hint: `Assurez-vous que l'application Ollama est en cours d'exécution (localhost:11434) et que vous êtes connecté pour les modèles cloud.`,
+        btn_try_again: `Réessayer`,
+        btn_new_topic: `Choisir un nouveau thème`,
+        btn_restart_title: `Recommencer`,
+        btn_new_story_title: `Nouvelle histoire`,
+        btn_undo: `Annuler le dernier choix`,
+        ending_good: `Une fin triomphante`,
+        ending_bad: `Votre histoire se termine ici`,
+        ending_neutral: `Le voyage se termine`,
+        stat_turns: `Tours`,
+        stat_chapters: `Chapitres`,
+        stat_scenes: `Scènes`,
+        btn_new_adventure: `Nouvelle aventure`,
+        btn_different_genre: `Autre genre`,
+        settings_title: `Paramètres de l'aventure`,
+        set_tone: `Tonalité`,
+        tone_balanced: `Équilibrée`,
+        tone_light: `Légère`,
+        tone_dark: `Sombre`,
+        tone_horror: `Horreur`,
+        tone_humorous: `Humoristique`,
+        set_difficulty: `Difficulté / Enjeux`,
+        diff_medium: `Moyenne`,
+        diff_low: `Faible`,
+        diff_high: `Élevée`,
+        diff_hint: `Des enjeux plus élevés signifient des conséquences plus mortelles et plus de fins.`,
+        set_language: `Langue`,
+        set_langlevel: `Niveau de langue`,
+        lang_kid: `Enfant`,
+        lang_learning: `Apprentissage`,
+        lang_basic: `Débutant`,
+        lang_intermediate: `Intermédiaire`,
+        lang_advanced: `Avancé`,
+        set_style: `Style d'écriture`,
+        style_immersive: `Immersif`,
+        style_concise: `Concis`,
+        style_literary: `Littéraire`,
+        style_cinematic: `Cinématographique`,
+        btn_save_settings: `Enregistrer les paramètres`,
+        toast_connected: `IA connectée ! Vos aventures vous attendent.`,
+        toast_key_required: `Veuillez saisir votre clé API.`,
+        toast_topic_required: `Veuillez décrire le thème de votre aventure.`,
+        err_parse: `Impossible d'analyser la réponse de l'histoire.`,
+        err_invalid: `Format d'histoire invalide.`,
+    },
+    pt: {
+        brand_subtitle: `Escolha sua própria aventura`,
+        brand_tagline: `Cada história é única. Cada escolha importa. Cada aventura é sua.`,
+        btn_begin: `Comece sua jornada`,
+        btn_settings: `Configurações`,
+        btn_connect: `Conecte sua IA`,
+        topic_title: `Escolha sua história`,
+        topic_subtitle: `Selecione um gênero para começar sua aventura única`,
+        topic_or_custom: `— Ou crie a sua —`,
+        topic_placeholder: `ex.: Um assalto em uma cidade cyberpunk iluminada por neon...`,
+        topic_custom_btn: `Criar história personalizada`,
+        custom_tale: `História personalizada`,
+        back: `Voltar`,
+        connect_title: `Conecte sua IA`,
+        connect_desc: `O Infinite Tales gera histórias dinamicamente usando IA. Escolha um provedor e selecione um modelo para começar.`,
+        connect_provider: `Provedor`,
+        key_placeholder_openai: `Cole sua chave de API (sk-...)`,
+        key_placeholder_ollama: `Chave de API (opcional, ex.: "ollama")`,
+        connect_save: `Salvar e continuar`,
+        hint_openai: `Obtenha sua chave de API em <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a><br>Sua chave nunca sai do seu navegador.`,
+        key_placeholder_openrouter: `Cole sua chave de API do OpenRouter (sk-or-...)`,
+        hint_openrouter: `Obtenha uma chave de API gratuita em <a href="https://openrouter.ai/openrouter/free" target="_blank">openrouter.ai/openrouter/free</a><br>Sua chave nunca sai do seu navegador.`,
+        hint_ollama: `Exige o <a href="https://ollama.com/download" target="_blank">aplicativo Ollama</a> instalado e em execução localmente.<br>Os modelos na nuvem exigem que você esteja conectado à sua conta Ollama.`,
+        models_enter_key: `Digite sua chave de API para carregar os modelos disponíveis`,
+        models_loading: `Carregando modelos disponíveis`,
+        models_error: `Não foi possível carregar os modelos. Verifique sua chave de API.`,
+        badge_genre: `Gênero`,
+        badge_chapter: `Capítulo`,
+        badge_turn: `Turno`,
+        loading_begin: `Sua história começa a se desenrolar...`,
+        loading_continue: `A história continua...`,
+        err_title: `Algo deu errado`,
+        err_hint: `Certifique-se de que o aplicativo Ollama esteja em execução (localhost:11434) e de que você esteja conectado para usar os modelos na nuvem.`,
+        btn_try_again: `Tentar novamente`,
+        btn_new_topic: `Escolher novo tema`,
+        btn_restart_title: `Reiniciar`,
+        btn_new_story_title: `Nova história`,
+        btn_undo: `Desfazer última escolha`,
+        ending_good: `Um fim triunfante`,
+        ending_bad: `Sua história termina aqui`,
+        ending_neutral: `A jornada termina`,
+        stat_turns: `Turnos`,
+        stat_chapters: `Capítulos`,
+        stat_scenes: `Cenas`,
+        btn_new_adventure: `Nova aventura`,
+        btn_different_genre: `Gênero diferente`,
+        settings_title: `Configurações da aventura`,
+        set_tone: `Tom`,
+        tone_balanced: `Equilibrado`,
+        tone_light: `Leve`,
+        tone_dark: `Sombrio`,
+        tone_horror: `Terror`,
+        tone_humorous: `Humorístico`,
+        set_difficulty: `Dificuldade / Apostas`,
+        diff_medium: `Média`,
+        diff_low: `Baixa`,
+        diff_high: `Alta`,
+        diff_hint: `Apostas mais altas significam consequências mais letais e mais finais.`,
+        set_language: `Idioma`,
+        set_langlevel: `Nível de idioma`,
+        lang_kid: `Infantil`,
+        lang_learning: `Aprendizagem`,
+        lang_basic: `Básico`,
+        lang_intermediate: `Intermediário`,
+        lang_advanced: `Avançado`,
+        set_style: `Estilo de escrita`,
+        style_immersive: `Imersivo`,
+        style_concise: `Conciso`,
+        style_literary: `Literário`,
+        style_cinematic: `Cinematográfico`,
+        btn_save_settings: `Salvar configurações`,
+        toast_connected: `IA conectada! Suas aventuras esperam por você.`,
+        toast_key_required: `Digite sua chave de API.`,
+        toast_topic_required: `Descreva o tema da sua aventura.`,
+        err_parse: `Não foi possível analisar a resposta da história.`,
+        err_invalid: `Formato de história inválido.`,
+    },
+    de: {
+        brand_subtitle: `Wähle dein eigenes Abenteuer`,
+        brand_tagline: `Jede Geschichte ist einzigartig. Jede Entscheidung zählt. Jedes Abenteuer gehört dir.`,
+        btn_begin: `Beginne deine Reise`,
+        btn_settings: `Einstellungen`,
+        btn_connect: `Verbinde deine KI`,
+        topic_title: `Wähle deine Geschichte`,
+        topic_subtitle: `Wähle ein Genre, um dein einzigartiges Abenteuer zu beginnen`,
+        topic_or_custom: `— Oder erstelle deine eigene —`,
+        topic_placeholder: `z. B. Ein Überfall in einer neonbeleuchteten Cyberpunk-Stadt...`,
+        topic_custom_btn: `Benutzerdefinierte Geschichte erstellen`,
+        custom_tale: `Benutzerdefinierte Geschichte`,
+        back: `Zurück`,
+        connect_title: `Verbinde deine KI`,
+        connect_desc: `Infinite Tales generiert Geschichten dynamisch mit KI. Wähle einen Anbieter und ein Modell, um zu beginnen.`,
+        connect_provider: `Anbieter`,
+        key_placeholder_openai: `Füge deinen API-Schlüssel ein (sk-...)`,
+        key_placeholder_ollama: `API-Schlüssel (optional, z. B. "ollama")`,
+        connect_save: `Speichern und fortfahren`,
+        hint_openai: `Erhalte deinen API-Schlüssel unter <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a><br>Dein Schlüssel verlässt deinen Browser nie.`,
+        key_placeholder_openrouter: `Füge deinen OpenRouter-API-Schlüssel ein (sk-or-...)`,
+        hint_openrouter: `Erhalte einen kostenlosen API-Schlüssel unter <a href="https://openrouter.ai/openrouter/free" target="_blank">openrouter.ai/openrouter/free</a><br>Dein Schlüssel verlässt nie deinen Browser.`,
+        hint_ollama: `Benötigt die <a href="https://ollama.com/download" target="_blank">Ollama-App</a> installiert und lokal ausgeführt.<br>Cloud-Modelle erfordern, dass du in deinem Ollama-Konto angemeldet bist.`,
+        models_enter_key: `Gib deinen API-Schlüssel ein, um verfügbare Modelle zu laden`,
+        models_loading: `Verfügbare Modelle werden geladen`,
+        models_error: `Modelle konnten nicht geladen werden. Überprüfe deinen API-Schlüssel.`,
+        badge_genre: `Genre`,
+        badge_chapter: `Kapitel`,
+        badge_turn: `Zug`,
+        loading_begin: `Deine Geschichte beginnt sich zu entfalten...`,
+        loading_continue: `Die Geschichte geht weiter...`,
+        err_title: `Etwas ist schiefgelaufen`,
+        err_hint: `Stelle sicher, dass die Ollama-App läuft (localhost:11434) und du für Cloud-Modelle angemeldet bist.`,
+        btn_try_again: `Erneut versuchen`,
+        btn_new_topic: `Neues Thema wählen`,
+        btn_restart_title: `Neu starten`,
+        btn_new_story_title: `Neue Geschichte`,
+        btn_undo: `Letzte Wahl rückgängig machen`,
+        ending_good: `Ein triumphales Ende`,
+        ending_bad: `Deine Geschichte endet hier`,
+        ending_neutral: `Die Reise endet`,
+        stat_turns: `Züge`,
+        stat_chapters: `Kapitel`,
+        stat_scenes: `Szenen`,
+        btn_new_adventure: `Neues Abenteuer`,
+        btn_different_genre: `Anderes Genre`,
+        settings_title: `Abenteuer-Einstellungen`,
+        set_tone: `Ton`,
+        tone_balanced: `Ausgewogen`,
+        tone_light: `Leicht`,
+        tone_dark: `Düster`,
+        tone_horror: `Horror`,
+        tone_humorous: `Humorvoll`,
+        set_difficulty: `Schwierigkeit / Einsatz`,
+        diff_medium: `Mittel`,
+        diff_low: `Niedrig`,
+        diff_high: `Hoch`,
+        diff_hint: `Höherer Einsatz bedeutet tödlichere Konsequenzen und mehr Enden.`,
+        set_language: `Sprache`,
+        set_langlevel: `Sprachniveau`,
+        lang_kid: `Kind`,
+        lang_learning: `Lernen`,
+        lang_basic: `Grundlagen`,
+        lang_intermediate: `Mittel`,
+        lang_advanced: `Fortgeschritten`,
+        set_style: `Schreibstil`,
+        style_immersive: `Immersiv`,
+        style_concise: `Kompakt`,
+        style_literary: `Literarisch`,
+        style_cinematic: `Kinematografisch`,
+        btn_save_settings: `Einstellungen speichern`,
+        toast_connected: `KI verbunden! Deine Abenteuer warten.`,
+        toast_key_required: `Bitte gib deinen API-Schlüssel ein.`,
+        toast_topic_required: `Bitte beschreibe das Thema deines Abenteuers.`,
+        err_parse: `Die Antwort der Geschichte konnte nicht analysiert werden.`,
+        err_invalid: `Ungültiges Geschichtsformat.`,
+    },
+    it: {
+        brand_subtitle: `Scegli la tua avventura`,
+        brand_tagline: `Ogni storia è unica. Ogni scelta conta. Ogni avventura è tua.`,
+        btn_begin: `Inizia il tuo viaggio`,
+        btn_settings: `Impostazioni`,
+        btn_connect: `Collega la tua IA`,
+        topic_title: `Scegli la tua storia`,
+        topic_subtitle: `Seleziona un genere per iniziare la tua avventura unica`,
+        topic_or_custom: `— Oppure creane una tua —`,
+        topic_placeholder: `es., Una rapina in una città cyberpunk illuminata al neon...`,
+        topic_custom_btn: `Crea storia personalizzata`,
+        custom_tale: `Storia personalizzata`,
+        back: `Indietro`,
+        connect_title: `Collega la tua IA`,
+        connect_desc: `Infinite Tales genera storie dinamicamente tramite l'IA. Scegli un provider e seleziona un modello per iniziare.`,
+        connect_provider: `Provider`,
+        key_placeholder_openai: `Incolla la tua chiave API (sk-...)`,
+        key_placeholder_ollama: `Chiave API (facoltativa, es. "ollama")`,
+        connect_save: `Salva e continua`,
+        hint_openai: `Ottieni la tua chiave API su <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a><br>La tua chiave non lascia mai il tuo browser.`,
+        key_placeholder_openrouter: `Incolla la tua chiave API OpenRouter (sk-or-...)`,
+        hint_openrouter: `Ottieni una chiave API gratuita su <a href="https://openrouter.ai/openrouter/free" target="_blank">openrouter.ai/openrouter/free</a><br>La tua chiave non lascia mai il tuo browser.`,
+        hint_ollama: `Richiede l'<a href="https://ollama.com/download" target="_blank">app Ollama</a> installata ed eseguita localmente.<br>I modelli cloud richiedono l'accesso al tuo account Ollama.`,
+        models_enter_key: `Inserisci la tua chiave API per caricare i modelli disponibili`,
+        models_loading: `Caricamento modelli disponibili`,
+        models_error: `Impossibile caricare i modelli. Controlla la tua chiave API.`,
+        badge_genre: `Genere`,
+        badge_chapter: `Capitolo`,
+        badge_turn: `Turno`,
+        loading_begin: `La tua storia comincia a prendere forma...`,
+        loading_continue: `La storia continua...`,
+        err_title: `Qualcosa è andato storto`,
+        err_hint: `Assicurati che l'app Ollama sia in esecuzione (localhost:11434) e di aver effettuato l'accesso per i modelli cloud.`,
+        btn_try_again: `Riprova`,
+        btn_new_topic: `Scegli un nuovo tema`,
+        btn_restart_title: `Riavvia`,
+        btn_new_story_title: `Nuova storia`,
+        btn_undo: `Annulla ultima scelta`,
+        ending_good: `Un finale trionfante`,
+        ending_bad: `La tua storia finisce qui`,
+        ending_neutral: `Il viaggio finisce`,
+        stat_turns: `Turni`,
+        stat_chapters: `Capitoli`,
+        stat_scenes: `Scene`,
+        btn_new_adventure: `Nuova avventura`,
+        btn_different_genre: `Genere diverso`,
+        settings_title: `Impostazioni dell'avventura`,
+        set_tone: `Tono`,
+        tone_balanced: `Equilibrato`,
+        tone_light: `Leggero`,
+        tone_dark: `Oscuro`,
+        tone_horror: `Horror`,
+        tone_humorous: `Umoristico`,
+        set_difficulty: `Difficoltà / Poste in gioco`,
+        diff_medium: `Media`,
+        diff_low: `Bassa`,
+        diff_high: `Alta`,
+        diff_hint: `Poste più alte significano conseguenze più letali e più finali.`,
+        set_language: `Lingua`,
+        set_langlevel: `Livello di lingua`,
+        lang_kid: `Bambino`,
+        lang_learning: `Apprendimento`,
+        lang_basic: `Base`,
+        lang_intermediate: `Intermedio`,
+        lang_advanced: `Avanzato`,
+        set_style: `Stile di scrittura`,
+        style_immersive: `Immersivo`,
+        style_concise: `Conciso`,
+        style_literary: `Letterario`,
+        style_cinematic: `Cinematografico`,
+        btn_save_settings: `Salva impostazioni`,
+        toast_connected: `IA collegata! Le tue avventure ti aspettano.`,
+        toast_key_required: `Inserisci la tua chiave API.`,
+        toast_topic_required: `Descrivi il tema della tua avventura.`,
+        err_parse: `Impossibile analizzare la risposta della storia.`,
+        err_invalid: `Formato storia non valido.`,
+    },
+};
+
+function browserLanguage() {
+    const raw = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+    const base = raw.split('-')[0];
+    return LANGUAGES[base] ? base : 'en';
+}
+
+function normalizeLang(v) {
+    if (!v) return null;
+    if (LANGUAGES[v]) return v;
+    if (LANG_BY_NAME[v]) return LANG_BY_NAME[v];
+    return null;
+}
+
+function t(key) {
+    const dict = I18N[state.settings.language] || I18N.en;
+    return dict[key] || I18N.en[key] || key;
+}
+
+function initIcons() {
+    if (window.lucide) lucide.createIcons();
+}
+
+function applyTranslations() {
+    const lang = state.settings.language;
+    document.documentElement.lang = lang;
+    document.title = 'Infinite Tales — ' + t('brand_subtitle');
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        el.textContent = t(el.dataset.i18n);
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        el.placeholder = t(el.dataset.i18nPlaceholder);
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        el.title = t(el.dataset.i18nTitle);
+    });
+    renderTopics();
+    initIcons();
+}
+
+// ── State ──
+const MAX_TURNS = 20;
+
+const MODELS = {
+    ollama: [
+        { value: 'glm-5.2:cloud', label: 'GLM-5.2 (Cloud)' },
+        { value: 'kimi-k3:cloud', label: 'Kimi K3 (Cloud)' },
+        { value: 'deepseek-v4-flash:cloud', label: 'DeepSeek V4 Flash (Cloud)' },
+    ],
+    openai: [
+        { value: 'gpt-4o-mini', label: 'GPT-4o Mini (Fast & Affordable)' },
+        { value: 'gpt-4o', label: 'GPT-4o (Higher Quality)' },
+        { value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini' },
+        { value: 'gpt-4.1', label: 'GPT-4.1' },
+    ],
+    openrouter: [
+        { value: 'meta-llama/llama-3.1-8b-instruct:free', label: 'Llama 3.1 8B Instruct (Free)' },
+        { value: 'mistralai/mistral-7b-instruct:free', label: 'Mistral 7B Instruct (Free)' },
+        { value: 'qwen/qwen-2.5-7b-instruct:free', label: 'Qwen 2.5 7B Instruct (Free)' },
+        { value: 'google/gemini-2.0-flash-exp:free', label: 'Gemini 2.0 Flash (Free)' },
+    ],
+};
+
+// ── Per-provider storage ──
+function storedApiKey(provider) {
+    return provider === 'ollama' ? 'ollama' : (localStorage.getItem('cyoa_api_key_' + provider) || '');
+}
+function storedModel(provider) {
+    return localStorage.getItem('cyoa_model_' + provider) || '';
+}
+function defaultModel(provider) {
+    const defaults = { openai: 'gpt-4o-mini', openrouter: 'meta-llama/llama-3.1-8b-instruct:free' };
+    return defaults[provider] || 'glm-5.2:cloud';
+}
+
+let state = {
+    topic: null,
+    topicPrompt: null,
+    chapter: 0,
+    turn: 0,
+    history: [], // Array of {story, choices, chosenIndex}
+    currentStory: null,
+    isLoading: false,
+    isTyping: false,
+    settings: {
+        tone: 'balanced',
+        difficulty: 'medium',
+        language: normalizeLang(localStorage.getItem('cyoa_language')) || browserLanguage(),
+        langlevel: localStorage.getItem('cyoa_langlevel') || 'intermediate',
+        style: 'immersive',
+    },
+    provider: localStorage.getItem('cyoa_provider') || 'ollama',
+    apiKey: storedApiKey(localStorage.getItem('cyoa_provider') || 'ollama'),
+    model: storedModel(localStorage.getItem('cyoa_provider') || 'ollama') || defaultModel(localStorage.getItem('cyoa_provider') || 'ollama'),
+    storySummary: '', // Running summary for context management
+};
+
+// ── DOM Helpers ──
+const $ = (id) => document.getElementById(id);
+
+// ── Screen Navigation ──
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    $(id).classList.add('active');
+    window.scrollTo(0, 0);
+}
+
+function goToTopicScreen() {
+    if (providerNeedsKey(state.provider) && !state.apiKey) {
+        goToApiKeyScreen();
+        return;
+    }
+    renderTopics();
+    showScreen('topic-screen');
+}
+
+function goToApiKeyScreen() {
+    selectProvider(state.provider, document.querySelector(`#provider-select .setting-option[data-value="${state.provider}"]`));
+    showScreen('apikey-screen');
+}
+
+// ── Connection ──
+function providerNeedsKey(p) {
+    return p === 'openai' || p === 'openrouter';
+}
+
+function providerConfig(p) {
+    return {
+        ollama: {
+            needsKey: false,
+            chatUrl: 'http://localhost:11434/v1/chat/completions',
+            models: MODELS.ollama,
+            hintKey: 'hint_ollama',
+        },
+        openai: {
+            needsKey: true,
+            chatUrl: 'https://api.openai.com/v1/chat/completions',
+            modelsUrl: 'https://api.openai.com/v1/models',
+            models: MODELS.openai,
+            hintKey: 'hint_openai',
+            keyPlaceholder: 'key_placeholder_openai',
+            filter: m => !/text-embedding|davinci|babbage|curie|ada|whisper|tts|dall-e|transcribe|moderation|image|realtime|sora|search|audio|:pro|gpt-3\.5/i.test(m.id),
+        },
+        openrouter: {
+            needsKey: true,
+            chatUrl: 'https://openrouter.ai/api/v1/chat/completions',
+            modelsUrl: 'https://openrouter.ai/api/v1/models',
+            models: MODELS.openrouter,
+            hintKey: 'hint_openrouter',
+            keyPlaceholder: 'key_placeholder_openrouter',
+            filter: m => {
+                const pr = m.pricing || {};
+                return Number(pr.prompt) === 0 && Number(pr.completion) === 0;
+            },
+        },
+    }[p] || { needsKey: false, chatUrl: 'http://localhost:11434/v1/chat/completions', models: MODELS.ollama, hintKey: 'hint_ollama' };
+}
+
+function selectProvider(provider, el) {
+    state.provider = provider;
+    state.apiKey = storedApiKey(provider);
+    state.model = storedModel(provider) || defaultModel(provider);
+    $('provider-select').querySelectorAll('.setting-option').forEach(o => o.classList.remove('selected'));
+    if (el) el.classList.add('selected');
+
+    const cfg = providerConfig(provider);
+    const input = $('apikey-input');
+    input.style.display = cfg.needsKey ? '' : 'none';
+    input.value = cfg.needsKey ? state.apiKey : '';
+    input.placeholder = t(cfg.keyPlaceholder || 'key_placeholder_openai');
+    input.type = cfg.needsKey ? 'password' : 'text';
+
+    const modelSelect = $('apikey-model');
+    if (cfg.modelsUrl) {
+        if (input.value.trim()) {
+            loadProviderModels();
+        } else {
+            modelSelect.innerHTML = `<option value="">${t('models_enter_key')}</option>`;
+            modelSelect.disabled = true;
+        }
+    } else {
+        modelSelect.disabled = false;
+        modelSelect.innerHTML = cfg.models.map(m =>
+            `<option value="${m.value}">${m.label}</option>`
+        ).join('');
+        modelSelect.value = state.model;
+    }
+
+    $('apikey-hint').innerHTML = t(cfg.hintKey);
+}
+
+let modelFetchTimer = null;
+let modelFetchController = null;
+
+async function loadProviderModels() {
+    const cfg = providerConfig(state.provider);
+    const key = $('apikey-input').value.trim();
+    const modelSelect = $('apikey-model');
+    if (!cfg.modelsUrl || !key) return;
+
+    if (modelFetchController) modelFetchController.abort('superseded');
+    const controller = new AbortController();
+    modelFetchController = controller;
+
+    modelSelect.innerHTML = `<option value="">${t('models_loading')}...</option>`;
+    modelSelect.disabled = true;
+
+    const timeout = setTimeout(() => controller.abort('timeout'), 15000);
+
+    try {
+        const res = await fetch(cfg.modelsUrl, {
+            headers: { 'Authorization': `Bearer ${key}` },
+            signal: controller.signal,
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const models = (data.data || [])
+            .filter(m => m && m.id && cfg.filter(m))
+            .map(m => m.id)
+            .sort();
+        if (!models.length) throw new Error('no models');
+        if (controller.signal.aborted) return;
+        modelSelect.disabled = false;
+        modelSelect.innerHTML = models.map(id => `<option value="${id}">${id}</option>`).join('');
+        if (models.includes(state.model)) modelSelect.value = state.model;
+    } catch (err) {
+        if (controller.signal.aborted && controller.signal.reason === 'superseded') return;
+        modelSelect.disabled = false;
+        modelSelect.innerHTML = cfg.models.map(m =>
+            `<option value="${m.value}">${m.label}</option>`).join('');
+        if (state.model) modelSelect.value = state.model;
+        showToast(t('models_error'), 'error');
+    } finally {
+        clearTimeout(timeout);
+        if (modelFetchController === controller) modelFetchController = null;
+    }
+}
+
+function saveConnection() {
+    const needsKey = providerNeedsKey(state.provider);
+    const key = needsKey ? $('apikey-input').value.trim() : 'ollama';
+    if (needsKey && !key) {
+        showToast(t('toast_key_required'), 'error');
+        return;
+    }
+    state.apiKey = key;
+    state.model = $('apikey-model').value || state.model;
+    localStorage.setItem('cyoa_api_key_' + state.provider, state.apiKey);
+    localStorage.setItem('cyoa_model_' + state.provider, state.model);
+    localStorage.setItem('cyoa_provider', state.provider);
+    showToast(t('toast_connected'));
+    showScreen('start-screen');
+}
+
+// ── Settings ──
+function openSettings() { $('settings-modal').classList.add('active'); }
+function closeSettings() { $('settings-modal').classList.remove('active'); }
+
+function selectSetting(selectId, el) {
+    $(selectId).querySelectorAll('.setting-option').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+    const key = selectId.replace('-select','');
+    state.settings[key] = el.dataset.value;
+    localStorage.setItem('cyoa_' + key, el.dataset.value);
+    if (key === 'language') applyTranslations();
+}
+
+// ── Topics ──
+function renderTopics() {
+    const grid = $('topic-grid');
+    grid.innerHTML = TOPICS.map(t => `
+        <div class="topic-card" style="--card-accent:${t.accent}" onclick="startStory('${t.id}')">
+            <span class="topic-icon"><i data-lucide="${t.icon}"></i></span>
+            <h3 class="topic-name">${escapeHtml(t.name[state.settings.language] || t.name.en)}</h3>
+            <p class="topic-desc">${escapeHtml(t.desc[state.settings.language] || t.desc.en)}</p>
+        </div>
+    `).join('');
+    initIcons();
+}
+
+// ── Start Story ──
+function startStory(topicId) {
+    const topic = TOPICS.find(t => t.id === topicId);
+    if (!topic) return;
+    state.topic = topic.name[state.settings.language] || topic.name.en;
+    state.topicPrompt = topic.prompt;
+    state.chapter = 0;
+    state.turn = 0;
+    state.history = [];
+    state.storySummary = '';
+    $('story-topic-badge').innerHTML = `<i data-lucide="${topic.icon}"></i> ${state.topic}`;
+    showScreen('story-screen');
+    initIcons();
+    generateStoryNode(null);
+}
+
+function startCustomStory() {
+    const input = $('custom-topic-input');
+    const val = input.value.trim();
+    if (!val) { showToast(t('toast_topic_required'), 'error'); return; }
+    state.topic = t('custom_tale');
+    state.topicPrompt = `A unique adventure: ${val}. Create an engaging, branching story around this concept.`;
+    state.chapter = 0;
+    state.turn = 0;
+    state.history = [];
+    state.storySummary = '';
+    $('story-topic-badge').innerHTML = `<i data-lucide="sparkle"></i> ${state.topic}`;
+    showScreen('story-screen');
+    initIcons();
+    generateStoryNode(null);
+}
+
+// ── Story Generation ──
+function buildSystemPrompt() {
+    const { tone, difficulty, language, langlevel, style } = state.settings;
+    const languageName = (LANGUAGES[language] && LANGUAGES[language].name) || 'English';
+
+    const toneMap = {
+        balanced: 'Balance lighthearted moments with genuine tension and stakes. The story should feel engaging and adventurous.',
+        light: 'Keep the tone fun, adventurous, and not too dark. Even dangers should feel exciting rather than terrifying. Humor is welcome.',
+        dark: 'The tone should be grim, atmospheric, and morally complex. Bad choices have serious consequences. Hope is scarce but precious.',
+        horror: 'Build dread and tension relentlessly. Use sensory details, psychological horror, and the unknown. The player should feel genuinely unsettled.',
+        humorous: 'Be witty, playful, and irreverent. Subvert tropes, include comedic situations, and keep things lighthearted even in danger.',
+    };
+
+    const difficultyMap = {
+        low: 'Consequences for bad choices are mild. The player is unlikely to reach a bad ending quickly. Give them room to explore.',
+        medium: 'Choices have meaningful consequences. Bad endings are possible but not frequent. The player must think about their decisions.',
+        high: 'Every choice matters deeply. Bad endings are common and can come suddenly. The player must be clever and careful to survive.',
+    };
+
+    const langlevelMap = {
+        kid: 'The player is a child. Write in very simple, short sentences using only common, easy words. Keep vocabulary and ideas simple and friendly.',
+        learning: 'The player is still learning this language. Use simple, clear sentences and everyday words. Explain any uncommon word and keep grammar straightforward.',
+        basic: 'The player has a basic level in this language. Use mostly common words, occasionally introducing slightly richer vocabulary. Keep sentences clear and easy to follow.',
+        intermediate: 'The player has an intermediate level in this language. Use natural, varied vocabulary with normal sentence structures, and occasionally richer expressions.',
+        advanced: 'The player has an advanced level in this language. Use rich, sophisticated vocabulary, complex sentence structures, and nuanced idiomatic expressions.',
+    };
+
+    const styleMap = {
+        immersive: 'Use vivid sensory details, show don\'t tell, and put the reader in the scene. Describe what the character sees, hears, smells, and feels. 2-3 paragraphs per scene.',
+        concise: 'Keep descriptions tight and punchy. Move the plot forward efficiently. 1-2 paragraphs per scene.',
+        literary: 'Use rich, elegant prose with metaphors and thematic depth. Explore the inner life of the character. 2-4 paragraphs per scene.',
+        cinematic: 'Write like a screenplay — visual, action-driven, with dramatic pacing. Focus on what the camera would see. 2-3 paragraphs per scene.',
+    };
+
+    return `You are a master storyteller and game master running a "Choose Your Own Adventure" game.
+
+GENRE/PREMISE: ${state.topicPrompt}
+
+LANGUAGE: CRITICAL — you MUST write ALL content (narrative, choices, hints, and summary) in ${languageName}. Never switch to English or any other language, regardless of what the player writes.
+
+LANGUAGE LEVEL: ${langlevelMap[langlevel] || langlevelMap.intermediate} Apply this reading level to ALL text you write: narrative, choices, hints, and summary.
+
+TONE: ${toneMap[tone]}
+
+DIFFICULTY: ${difficultyMap[difficulty]}
+
+WRITING STYLE: ${styleMap[style]}
+
+RULES:
+1. Write in SECOND PERSON ("You open the door...", "Your heart pounds..."). The reader IS the protagonist.
+2. Each response is ONE scene/page of the adventure. Write 2-3 paragraphs of rich, immersive narrative.
+3. After the narrative, present 2 or 3 choices for the player. Never give 1 or more than 3.
+4. Each choice should be a brief, intriguing option (1-2 sentences max) that clearly communicates what the player will do.
+5. Choices should feel meaningfully different from each other, not just rephrasings.
+6. Make the world feel alive — include NPCs, environmental details, atmosphere, and sensory immersion.
+7. The story should have escalating tension and a narrative arc. After roughly 10-20 turns, the story should naturally build toward an ending.
+8. Endings: When the story reaches a natural conclusion (triumph, defeat, death, escape, discovery, etc.), set "is_ending" to true and "ending_type" to "good", "bad", or "neutral". Do NOT include choices when it's an ending.
+9. For endings, write a satisfying, dramatic conclusion (3-5 paragraphs). Make it feel earned and conclusive.
+10. Do NOT repeat scenarios or choices the player has already encountered.
+11. Remember and reference the player's past choices to make the story feel continuous and personalized.
+12. Be creative! Each adventure should be unique, with surprising twists and memorable moments.
+
+RESPONSE FORMAT — You MUST respond as valid JSON with this exact structure:
+{
+    "story": "The narrative text for this scene (2-3 paragraphs, or 3-5 paragraphs for endings)",
+    "choices": [
+        {"text": "A brief description of what the player does", "hint": "A short hint about what this choice might lead to (optional, 3-6 words)"},
+        {"text": "Another option", "hint": "Hint about consequences"}
+    ],
+    "is_ending": false,
+    "ending_type": null,
+    "summary": "A 1-2 sentence summary of what happened in this scene, for continuity tracking"
+}
+
+When is_ending is true, choices should be an empty array and ending_type should be "good", "bad", or "neutral".
+
+IMPORTANT: Return ONLY the JSON. No markdown code fences, no extra text.`;
+}
+
+function buildUserPrompt(chosenOption) {
+    const parts = [];
+
+    if (state.turn === 0) {
+        parts.push('BEGIN THE ADVENTURE. Start with an engaging opening scene that drops the player into the action. Introduce the setting, the stakes, and an immediate situation that demands a choice. Do NOT use the word "Chapter" — just start the story.');
+    } else {
+        if (state.storySummary) {
+            parts.push(`STORY SO FAR (summary of previous scenes):\n${state.storySummary}\n`);
+        }
+        parts.push(`The player chose: "${chosenOption}"\n`);
+        parts.push('Continue the story from this choice. Show the immediate consequences of the player\'s action, then present the next situation and new choices.');
+    }
+
+    if (state.turn >= MAX_TURNS) {
+        parts.push('\nIMPORTANT: This is the FINAL scene of the adventure. Conclude the story with a dramatic, satisfying ending. Set "is_ending" to true and "ending_type" to "good", "bad", or "neutral". Choices must be an empty array.');
+    }
+
+    const languageName = (LANGUAGES[state.settings.language] && LANGUAGES[state.settings.language].name) || 'English';
+    parts.push(`\nREMINDER: Write this entire scene — narrative, choices, hints, and summary — in ${languageName}. Do not switch languages.`);
+
+    return parts.join('\n');
+}
+
+async function generateStoryNode(chosenOption) {
+    if (state.isLoading) return;
+    state.isLoading = true;
+    state.turn++;
+    state.chapter = Math.floor((state.turn - 1) / 4) + 1; // New chapter every 4 turns
+
+    // Update badges
+    $('story-chapter-badge').textContent = `${t('badge_chapter')} ${state.chapter}`;
+    $('story-turn-badge').textContent = `${t('badge_turn')} ${state.turn}`;
+
+    // Show loading
+    $('story-content').innerHTML = `
+        <div class="loading-section">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">${state.turn === 1 ? t('loading_begin') : t('loading_continue')}</p>
+        </div>
+    `;
+    $('back-area').style.display = 'none';
+
+    try {
+        const messages = [
+            { role: 'system', content: buildSystemPrompt() },
+            { role: 'user', content: buildUserPrompt(chosenOption) },
+        ];
+
+        const cfg = providerConfig(state.provider);
+        const headers = { 'Content-Type': 'application/json' };
+        if (cfg.needsKey) headers['Authorization'] = `Bearer ${state.apiKey}`;
+        if (state.provider === 'openrouter') {
+            headers['HTTP-Referer'] = window.location.href || 'http://localhost';
+            headers['X-Title'] = 'Infinite Tales';
+        }
+        const response = await fetch(cfg.chatUrl, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({
+                model: state.model,
+                messages: messages,
+                temperature: 0.9,
+                max_tokens: 3000,
+                stream: false,
+                response_format: { type: 'json_object' },
+            }),
+        });
+
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            const errMsg = errData?.error?.message || `HTTP ${response.status}`;
+            throw new Error(errMsg);
+        }
+
+        const data = await response.json();
+        const content = data.choices[0].message.content;
+        let storyNode;
+
+        try {
+            storyNode = JSON.parse(content);
+        } catch (e) {
+            // Try to extract JSON from the content
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                storyNode = JSON.parse(jsonMatch[0]);
+            } else {
+                throw new Error(t('err_parse'));
+            }
+        }
+
+        // Validate
+        if (!storyNode.story) throw new Error(t('err_invalid'));
+        if (!storyNode.choices) storyNode.choices = [];
+        if (!storyNode.is_ending) storyNode.is_ending = false;
+        if (!storyNode.ending_type) storyNode.ending_type = null;
+
+        // Force an ending once the maximum number of turns is reached
+        if (state.turn >= MAX_TURNS) {
+            storyNode.is_ending = true;
+            storyNode.ending_type = storyNode.ending_type || 'neutral';
+            storyNode.choices = [];
+        }
+
+        // Save to history
+        if (state.currentStory) {
+            state.history.push({
+                story: state.currentStory,
+                chosenIndex: state._lastChoiceIndex,
+            });
+        }
+
+        // Update summary for context
+        if (storyNode.summary) {
+            if (state.storySummary) {
+                state.storySummary += ' ' + storyNode.summary;
+                // Keep summary reasonable
+                if (state.storySummary.length > 1500) {
+                    state.storySummary = state.storySummary.slice(-1500);
+                }
+            } else {
+                state.storySummary = storyNode.summary;
+            }
+        }
+
+        state.currentStory = storyNode;
+        state.isLoading = false;
+
+        // Render
+        renderStory(storyNode);
+
+    } catch (err) {
+        state.isLoading = false;
+        state.turn--; // Revert turn
+        console.error(err);
+        const connHint = /fetch|network|load resource/i.test(err.message)
+            ? `<p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1.5rem;">${t('err_hint')}</p>`
+            : '';
+        $('story-content').innerHTML = `
+            <div class="loading-section">
+                <p style="color:var(--accent-crimson);font-size:1.1rem;margin-bottom:1rem;"><i data-lucide="triangle-alert"></i> ${t('err_title')}</p>
+                <p style="color:var(--text-muted);margin-bottom:1.5rem;">${escapeHtml(err.message)}</p>
+                ${connHint}
+                <div style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center">
+                    <button class="btn btn-primary btn-small" onclick="generateStoryNode('${chosenOption ? chosenOption.replace(/'/g, "\\'") : ''}')">${t('btn_try_again')}</button>
+                    <button class="btn btn-ghost btn-small" onclick="goToTopicScreen()">${t('btn_new_topic')}</button>
+                </div>
+            </div>
+        `;
+        initIcons();
+    }
+}
+
+// ── Render Story ──
+function renderStory(node) {
+    const content = $('story-content');
+
+    // Build path/breadcrumb
+    let pathHTML = `<div class="story-path"><span class="path-step path-current">${t('badge_turn')} ${state.turn}</span></div>`;
+
+    // Build story text with typewriter effect
+    const storyHTML = `
+        ${pathHTML}
+        <div class="story-text-wrapper">
+            <div class="story-text" id="story-text-el"></div>
+        </div>
+    `;
+
+    if (node.is_ending) {
+        renderEnding(node);
+        return;
+    }
+
+    content.innerHTML = storyHTML;
+
+    // Typewriter effect
+    typewriterEffect($('story-text-el'), node.story, () => {
+        // After typing, show choices
+        const choicesHTML = `
+            <div class="choices-section" id="choices-section">
+                ${node.choices.map((choice, idx) => `
+                    <button class="choice-btn" style="animation-delay:${idx * 0.1}s" onclick="makeChoice(${idx})">
+                        ${escapeHtml(choice.text)}${choice.hint ? ` <span style="color:var(--text-muted);font-size:0.85rem;font-style:italic;">— ${escapeHtml(choice.hint)}</span>` : ''}
+                    </button>
+                `).join('')}
+            </div>
+        `;
+        content.innerHTML += choicesHTML;
+
+        // Show back button if we have history
+        if (state.history.length > 0) {
+            $('back-area').style.display = 'flex';
+        }
+    });
+}
+
+function makeChoice(index) {
+    if (state.isLoading || state.isTyping) return;
+    const choice = state.currentStory.choices[index];
+    if (!choice) return;
+    state._lastChoiceIndex = index;
+    generateStoryNode(choice.text);
+}
+
+// ── Typewriter Effect ──
+function typewriterEffect(el, text, onComplete) {
+    state.isTyping = true;
+    el.innerHTML = '<span class="typewriter-cursor"></span>';
+    let i = 0;
+    const cursor = '<span class="typewriter-cursor"></span>';
+
+    // Speed: faster for longer texts
+    const speed = text.length > 800 ? 8 : text.length > 400 ? 14 : 20;
+
+    function type() {
+        if (i < text.length) {
+            const partial = text.substring(0, i + 1);
+            el.innerHTML = escapeHtml(partial).replace(/\n/g, '<br>') + cursor;
+            i++;
+            // Scroll to bottom occasionally
+            if (i % 10 === 0) {
+                window.scrollTo(0, document.body.scrollHeight);
+            }
+            setTimeout(type, speed);
+        } else {
+            el.innerHTML = formatStoryText(text);
+            state.isTyping = false;
+            if (onComplete) onComplete();
+        }
+    }
+    type();
+}
+
+function formatStoryText(text) {
+    // Split into paragraphs and wrap in <p> tags
+    return text.split(/\n\n+/).map(p => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`).join('');
+}
+
+// ── Ending ──
+function renderEnding(node) {
+    const endingType = node.ending_type || 'neutral';
+    const typeIcons = { good: 'star', bad: 'skull', neutral: 'scale' };
+    const typeLabels = { good: t('ending_good'), bad: t('ending_bad'), neutral: t('ending_neutral') };
+
+    $('story-content').innerHTML = `
+        <div class="ending-section">
+            <div class="ending-ornament"><i data-lucide="${typeIcons[endingType] || 'crown'}"></i></div>
+            <h2 class="ending-title ${endingType}">${typeLabels[endingType]}</h2>
+            <div class="ending-text" id="ending-text-el"></div>
+            <div class="ending-stats">
+                <div class="ending-stat">
+                    <div class="ending-stat-value">${state.turn}</div>
+                    <div class="ending-stat-label">${t('stat_turns')}</div>
+                </div>
+                <div class="ending-stat">
+                    <div class="ending-stat-value">${state.chapter}</div>
+                    <div class="ending-stat-label">${t('stat_chapters')}</div>
+                </div>
+                <div class="ending-stat">
+                    <div class="ending-stat-value">${state.history.length + 1}</div>
+                    <div class="ending-stat-label">${t('stat_scenes')}</div>
+                </div>
+            </div>
+            <div class="ending-actions">
+                <button class="btn btn-primary btn-small" onclick="restartStory()">${t('btn_new_adventure')}</button>
+                <button class="btn btn-ghost btn-small" onclick="goToTopicScreen()">${t('btn_different_genre')}</button>
+            </div>
+        </div>
+    `;
+
+    // Typewriter for ending text
+    typewriterEffect($('ending-text-el'), node.story, () => {});
+    initIcons();
+}
+
+// ── Restart / Back ──
+function restartStory() {
+    state.chapter = 0;
+    state.turn = 0;
+    state.history = [];
+    state.currentStory = null;
+    state.storySummary = '';
+    generateStoryNode(null);
+}
+
+function goBack() {
+    if (state.history.length === 0) return;
+    const last = state.history.pop();
+    state.currentStory = last.story;
+    state.turn--;
+    state.chapter = Math.floor((state.turn - 1) / 4) + 1;
+    $('story-chapter-badge').textContent = `${t('badge_chapter')} ${state.chapter}`;
+    $('story-turn-badge').textContent = `${t('badge_turn')} ${state.turn}`;
+    // Revert summary — approximate by trimming last summary piece
+    // (This is best-effort; the summary is for AI context only)
+    renderStory(last.story);
+}
+
+// ── Toast ──
+function showToast(msg, type = 'success') {
+    const toast = $('toast');
+    toast.textContent = msg;
+    toast.className = type === 'error' ? 'error' : '';
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ── Utility ──
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+// ═══ BACKGROUND CANVAS — Floating Particles ═══
+(function initBackground() {
+    const canvas = $('bg-canvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let W, H;
+
+    function resize() {
+        W = canvas.width = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    function createParticles() {
+        const count = Math.min(60, Math.floor(W * H / 25000));
+        particles = [];
+        for (let i = 0; i < count; i++) {
+            particles.push({
+                x: Math.random() * W,
+                y: Math.random() * H,
+                vx: (Math.random() - 0.5) * 0.3,
+                vy: (Math.random() - 0.5) * 0.3,
+                size: Math.random() * 2 + 0.5,
+                opacity: Math.random() * 0.5 + 0.1,
+                phase: Math.random() * Math.PI * 2,
+            });
+        }
+    }
+    createParticles();
+    window.addEventListener('resize', createParticles);
+
+    function animate() {
+        ctx.clearRect(0, 0, W, H);
+
+        for (let p of particles) {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.phase += 0.01;
+
+            if (p.x < 0) p.x = W;
+            if (p.x > W) p.x = 0;
+            if (p.y < 0) p.y = H;
+            if (p.y > H) p.y = 0;
+
+            const flicker = Math.sin(p.phase) * 0.3 + 0.7;
+            const opacity = p.opacity * flicker;
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(212, 168, 90, ${opacity})`;
+            ctx.fill();
+        }
+
+        // Connect nearby particles
+        for (let i = 0; i < particles.length; i++) {
+            for (let j = i + 1; j < particles.length; j++) {
+                const dx = particles[i].x - particles[j].x;
+                const dy = particles[i].y - particles[j].y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 120) {
+                    const opacity = (1 - dist / 120) * 0.08;
+                    ctx.beginPath();
+                    ctx.moveTo(particles[i].x, particles[i].y);
+                    ctx.lineTo(particles[j].x, particles[j].y);
+                    ctx.strokeStyle = `rgba(212, 168, 90, ${opacity})`;
+                    ctx.lineWidth = 0.5;
+                    ctx.stroke();
+                }
+            }
+        }
+
+        requestAnimationFrame(animate);
+    }
+    animate();
+})();
+
+// ── Init ──
+// Load available models as the API key is typed
+['input', 'change'].forEach(evt =>
+    $('apikey-input').addEventListener(evt, () => {
+        if (!providerNeedsKey(state.provider)) return;
+        clearTimeout(modelFetchTimer);
+        modelFetchTimer = setTimeout(loadProviderModels, 600);
+    })
+);
+
+// Load saved settings
+['tone', 'difficulty', 'language', 'langlevel', 'style'].forEach(settingKey => {
+    const saved = localStorage.getItem('cyoa_' + settingKey);
+    const normalized = settingKey === 'language' ? normalizeLang(saved) : saved;
+    if (normalized) {
+        state.settings[settingKey] = normalized;
+        document.querySelectorAll(`#${settingKey}-select .setting-option`).forEach(o => {
+            o.classList.toggle('selected', o.dataset.value === normalized);
+        });
+    }
+});
+
+// Apply UI translations for the current language
+applyTranslations();
+
+</script>
+</body>
+</html>
+
